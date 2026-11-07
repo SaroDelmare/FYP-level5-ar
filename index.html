@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#15181D">
+<title>Level 5 AR · Run the code</title>
+<style>
+@font-face{font-family:Figtree;font-weight:400;src:url(fonts/figtree-latin-400-normal.woff) format('woff')}
+@font-face{font-family:Figtree;font-weight:700;src:url(fonts/figtree-latin-700-normal.woff) format('woff')}
+@font-face{font-family:'Source Code Pro';font-weight:400;src:url(fonts/source-code-pro-latin-400-normal.woff) format('woff')}
+@font-face{font-family:'Source Code Pro';font-weight:600;src:url(fonts/source-code-pro-latin-600-normal.woff) format('woff')}
+@font-face{font-family:Barlow;font-weight:700;src:url(fonts/barlow-latin-700-normal.woff) format('woff')}
+:root{
+  /* the 7 colours */
+  --neutral:#EEF0F2; --primary:#1E55FF; --accent:#1D47B8; --ink:#15181D; --light:#F8F9FB; --furniture:#3E4451; --wall:#2A2E37;
+  /* tints (same rules as the wall) */
+  --p16:#D5DFFC; --p40:#A1B7FD; --p60:#7597FD; --g35:#B7BAC0; --g60:#888C95; --g75:#6C717C; --edge:#545A65; --soft:#CACCD0; --code:#E1E2E5;
+  --display:Barlow,'Arial Narrow',Arial,sans-serif; --body:Figtree,system-ui,sans-serif; --mono:'Source Code Pro',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--light);font-family:var(--body);overflow:hidden;overscroll-behavior:none}
+[hidden]{display:none!important}
+#scene{position:fixed;inset:0}
+/* MindAR puts its video + canvas in the container; keep them full screen */
+#scene video{object-fit:cover}
+.a-enter-vr,.a-enter-ar{display:none!important}
+
+/* ---------- start screen ---------- */
+#start{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;justify-content:space-between;
+  padding:max(28px,env(safe-area-inset-top)) max(22px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(22px,env(safe-area-inset-left));
+  background:var(--wall);background-image:linear-gradient(#31353E 1px,transparent 1px),linear-gradient(90deg,#31353E 1px,transparent 1px);background-size:32px 32px}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--p40);margin:0}
+#start h1{font:700 clamp(44px,13vw,72px)/.95 var(--display);margin:14px 0 0;letter-spacing:.01em}
+#start h1 span{color:var(--primary)}
+#start .lede{font-size:17px;line-height:1.45;color:var(--soft);max-width:30ch;margin:16px 0 0}
+.minicards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:26px}
+.minicards div{background:var(--ink);border:2px solid var(--edge);border-radius:12px;overflow:hidden}
+.minicards b{display:block;background:var(--furniture);font:400 13px/1 var(--mono);padding:9px 10px;color:var(--code)}
+.minicards span{display:block;padding:9px 10px 11px;font-size:13px;color:var(--soft)}
+.go{appearance:none;border:0;border-radius:16px;background:var(--primary);color:var(--light);font:700 20px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;
+  padding:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:12px;cursor:pointer}
+.go:active{background:var(--accent)}
+.fine{font-size:13px;color:var(--g60);text-align:center;margin:12px 0 0}
+
+/* ---------- scanning hint ---------- */
+#scan{position:fixed;inset:0;z-index:10;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.frame{width:min(78vw,420px);aspect-ratio:640/412;position:relative}
+.frame i{position:absolute;width:34px;height:34px;border:4px solid var(--light);opacity:.9}
+.frame i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0;border-top-left-radius:12px}
+.frame i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0;border-top-right-radius:12px}
+.frame i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0;border-bottom-left-radius:12px}
+.frame i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0;border-bottom-right-radius:12px}
+.frame::after{content:"";position:absolute;left:6%;right:6%;height:3px;background:var(--primary);top:10%;border-radius:2px;animation:sweep 2.2s ease-in-out infinite;box-shadow:0 0 18px var(--primary)}
+@keyframes sweep{50%{top:88%}}
+.pill{background:rgba(21,24,29,.82);border:1.5px solid var(--edge);border-radius:99px;padding:10px 16px;font-size:15px;font-weight:700}
+
+/* ---------- top bar ---------- */
+#top{position:fixed;top:0;left:0;right:0;z-index:12;display:flex;justify-content:space-between;align-items:center;pointer-events:none;
+  padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left));
+  background:linear-gradient(rgba(21,24,29,.7),rgba(21,24,29,0))}
+#top .tag{font:600 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+#top .tag b{color:var(--light)}
+
+/* ---------- bottom sheet ---------- */
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;transform:translateY(110%);transition:transform .35s cubic-bezier(.2,.8,.2,1);
+  padding:0 max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+#sheet.on{transform:none}
+.sh{max-width:560px;margin:0 auto;background:var(--light);color:var(--ink);border-radius:22px;overflow:hidden;box-shadow:0 -6px 30px rgba(0,0,0,.35)}
+.sh-hd{display:flex;align-items:center;gap:10px;background:var(--ink);color:var(--code);padding:7px 12px}
+.dots3{display:flex;gap:5px}.dots3 i{width:9px;height:9px;border-radius:50%;background:var(--g75)}
+.sh-hd .file{font:400 15px/1 var(--mono);padding:7px 10px;border-top:3px solid var(--primary);background:#202328}
+.sh-hd .concept{margin-left:auto;font:600 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--light);background:var(--primary);padding:6px 9px;border-radius:99px}
+.sh-bd{padding:10px 14px 12px;display:flex;flex-direction:column;gap:9px}
+.how{margin:0;font-size:14px;line-height:1.3;color:var(--furniture)}
+.how b{color:var(--ink)}
+.ctl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.console{background:var(--ink);border-radius:10px;padding:7px 10px;font:400 12.5px/1.45 var(--mono);color:var(--code);min-height:43px}
+.console .ln{white-space:pre-wrap;word-break:break-word}
+.console .ln::before{content:">>> ";color:var(--g60)}
+.console .err{color:var(--light);font-weight:600}
+.console .err::before{content:"!!! ";color:var(--p60)}
+.console .sys{color:var(--g60)}
+.console .sys::before{content:"# "}
+/* controls */
+.slider{flex:1 1 220px;display:flex;flex-direction:column;gap:6px}
+.slider .val{font:600 18px/1 var(--mono);color:var(--ink)}
+.slider .val b{color:var(--primary)}
+input[type=range]{width:100%;accent-color:var(--primary);height:30px;margin:0}
+.ticks{display:flex;justify-content:space-between;font:400 11px/1 var(--mono);color:var(--g75);padding:0 6px}
+.btn{appearance:none;border:0;border-radius:14px;background:var(--primary);color:var(--light);font:700 17px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;
+  padding:15px 16px;cursor:pointer;flex:1 1 auto;touch-action:none;user-select:none;-webkit-user-select:none}
+.btn:active,.btn[data-on="1"]{background:var(--accent)}
+.btn.ghost{background:var(--neutral);color:var(--ink);border:2px solid var(--g35)}
+.toggle{flex:1 1 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--neutral);border-radius:14px;padding:10px 12px 10px 14px;border:0;cursor:pointer;color:var(--ink);text-align:left}
+.toggle .lab{font:600 14px/1.3 var(--mono)}
+.toggle .lab small{display:block;font:400 13px/1.3 var(--body);color:var(--g75)}
+.sw{width:64px;height:36px;border-radius:99px;background:var(--g35);position:relative;flex:none;transition:background .2s}
+.sw::after{content:"";position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;background:var(--light);transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.toggle[aria-pressed="true"] .sw{background:var(--primary)}
+.toggle[aria-pressed="true"] .sw::after{transform:translateX(28px)}
+.score{font:600 13px/1.3 var(--mono);color:var(--g75)}
+.score b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<!-- intro: one tap starts the camera (needed on iPhone, and it unlocks sound) -->
+<section id="start">
+  <div>
+    <p class="eyebrow">Level 5 · Diploma in Cloud Engineering</p>
+    <h1>RUN THE<br><span>CODE.</span></h1>
+    <p class="lede">Point your camera at any of the four code cards on the wall. The code runs line by line, right on the card.</p>
+    <div class="minicards">
+      <div><b>broke.py</b><span>if / else</span></div>
+      <div><b>procrastination.py</b><span>while loop</span></div>
+      <div><b>deadline.py</b><span>if / elif</span></div>
+      <div><b>lecture.py</b><span>try / except</span></div>
+    </div>
+  </div>
+  <div>
+    <button class="go" id="goBtn"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg>Start AR</button>
+    <p class="fine">Needs your camera. Nothing is recorded or uploaded.</p>
+  </div>
+</section>
+
+<div id="top" hidden><span class="tag">Level 5 · <b>AR</b></span><span class="tag" id="topState">Scanning</span></div>
+
+<div id="scan" hidden>
+  <div class="frame"><i></i><i></i><i></i><i></i></div>
+  <div class="pill" id="scanText">Point at a code card</div>
+</div>
+
+<div id="sheet" aria-live="polite">
+  <div class="sh">
+    <div class="sh-hd"><span class="dots3"><i></i><i></i><i></i></span><span class="file" id="shFile">deadline.py</span><span class="concept" id="shConcept">if / elif</span></div>
+    <div class="sh-bd">
+      <p class="how" id="shHow"></p>
+      <div class="ctl" id="shCtl"></div>
+      <div class="console" id="shConsole"></div>
+    </div>
+  </div>
+</div>
+
+<div id="scene"></div>
+
+<script src="lib/aframe-v1.5.0.min.js"></script>
+<script src="lib/mindar-image-aframe.prod.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
