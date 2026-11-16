@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EEF0F2">
+<title>Path Finder · Level 5</title>
+<style>
+@font-face{font-family:Figtree;font-weight:400;src:url(../fonts/figtree-latin-400-normal.woff) format('woff')}
+@font-face{font-family:Figtree;font-weight:700;src:url(../fonts/figtree-latin-700-normal.woff) format('woff')}
+@font-face{font-family:'Source Code Pro';font-weight:400;src:url(../fonts/source-code-pro-latin-400-normal.woff) format('woff')}
+@font-face{font-family:'Source Code Pro';font-weight:600;src:url(../fonts/source-code-pro-latin-600-normal.woff) format('woff')}
+@font-face{font-family:Barlow;font-weight:700;src:url(../fonts/barlow-latin-700-normal.woff) format('woff')}
+:root{
+  /* the 7 colours + tints, same as the wall and posters */
+  --neutral:#EEF0F2; --primary:#1E55FF; --accent:#1D47B8; --ink:#15181D; --light:#F8F9FB; --furniture:#3E4451; --wall:#2A2E37;
+  --p08:#E7ECFB; --p16:#D5DFFC; --p40:#A1B7FD; --g12:#E2E3E7; --g35:#B7BAC0; --g75:#6C717C;
+  --display:Barlow,'Arial Narrow',Arial,sans-serif; --body:Figtree,system-ui,-apple-system,sans-serif; --mono:'Source Code Pro',ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--neutral);color:var(--ink);font-family:var(--body)}
+body{min-height:100vh;min-height:100dvh;
+  background-image:linear-gradient(var(--g12) 1px,transparent 1px),linear-gradient(90deg,var(--g12) 1px,transparent 1px);background-size:28px 28px;
+  padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+[hidden]{display:none!important}
+.wrap{max-width:520px;margin:0 auto;min-height:calc(100dvh - 40px)}
+.screen{display:flex;flex-direction:column;gap:16px;min-height:calc(100dvh - 44px)}
+.eyebrow{font:600 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--primary);margin:0}
+h1{font:700 clamp(46px,14vw,72px)/.92 var(--display);margin:0;letter-spacing:.005em}
+h1 span{color:var(--primary)}
+.lede{font-size:17px;line-height:1.45;color:var(--furniture);margin:0}
+.btn{appearance:none;border:0;border-radius:16px;background:var(--primary);color:var(--light);font:700 19px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;
+  padding:19px;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn:active{background:var(--accent)}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--g35)}
+.fine{font-size:13px;line-height:1.4;color:var(--g75);margin:0}
+/* start: the fork, drawn */
+.fork{display:block;width:100%;height:auto;margin:6px 0 0}
+.paths{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.paths div{background:var(--light);border-radius:14px;padding:12px;border-top:5px solid var(--primary)}
+.paths div:last-child{border-top-color:var(--ink)}
+.paths b{display:block;font:700 15px/1.15 var(--display);letter-spacing:.02em;text-transform:uppercase}
+.paths span{display:block;font-size:13px;color:var(--furniture);margin-top:6px;line-height:1.35}
+/* progress = the route line */
+.route{display:flex;align-items:center;gap:0;margin:2px 0 4px}
+.route i{flex:1;height:5px;background:var(--g35)}
+.route b{width:16px;height:16px;border-radius:50%;background:var(--light);border:4px solid var(--g35);flex:none}
+.route b.done{border-color:var(--primary);background:var(--primary)}
+.route b.now{border-color:var(--primary);background:var(--light);box-shadow:0 0 0 4px var(--p16)}
+.route i.done{background:var(--primary)}
+.qnum{font:600 12px/1 var(--mono);color:var(--g75);letter-spacing:.12em}
+.q{font:700 clamp(26px,7.4vw,34px)/1.08 var(--display);margin:0;letter-spacing:.005em}
+.answers{display:flex;flex-direction:column;gap:12px}
+.ans{appearance:none;text-align:left;border:2px solid transparent;background:var(--light);border-radius:16px;padding:16px 16px 16px 14px;cursor:pointer;
+  display:flex;gap:14px;align-items:flex-start;font:400 17px/1.4 var(--body);color:var(--ink);box-shadow:0 2px 0 var(--g12);transition:transform .12s,border-color .12s}
+.ans:active{transform:scale(.985)}
+.ans .k{flex:none;width:30px;height:30px;border-radius:9px;background:var(--ink);color:var(--light);font:600 14px/30px var(--mono);text-align:center}
+.ans.pick{border-color:var(--primary)}
+.ans.pick .k{background:var(--primary)}
+.back{appearance:none;border:0;background:none;color:var(--g75);font:600 14px var(--body);padding:6px 0;cursor:pointer;align-self:flex-start}
+/* result */
+.res-card{background:var(--light);border-radius:20px;overflow:hidden;box-shadow:0 2px 0 var(--g12)}
+.res-hd{padding:18px 18px 16px;color:var(--light);background:var(--primary)}
+.res-hd.ink{background:var(--ink)}
+.res-hd .eyebrow{color:var(--p16)}
+.res-hd h2{font:700 clamp(30px,9vw,40px)/1 var(--display);margin:8px 0 8px;text-transform:uppercase}
+.res-hd p{margin:0;font-size:16px;line-height:1.4;color:var(--p16)}
+.res-hd.ink p,.res-hd.ink .eyebrow{color:var(--g35)}
+.split{padding:16px 18px 6px}
+.bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--g12)}
+.bar i:first-child{background:var(--primary)}
+.bar i:last-child{background:var(--ink)}
+.bar-k{display:flex;justify-content:space-between;font:600 12px/1 var(--mono);color:var(--g75);margin-top:8px}
+.res-bd{padding:8px 18px 18px;display:flex;flex-direction:column;gap:14px}
+.res-bd h3{font:600 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--primary);margin:6px 0 8px}
+.res-bd ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.res-bd li{font-size:15px;line-height:1.35;padding-left:16px;position:relative}
+.res-bd li::before{content:"";position:absolute;left:0;top:7px;width:7px;height:7px;border-radius:50%;background:var(--primary)}
+.jobs{display:flex;flex-wrap:wrap;gap:8px}
+.jobs span{font:700 13px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;background:var(--p08);color:var(--ink);padding:9px 11px;border-radius:999px}
+.note{background:var(--p16);border-radius:14px;padding:14px;font-size:14px;line-height:1.45}
+.note b{display:block;margin-bottom:2px}
+.row{display:flex;gap:10px}
+.row .btn{font-size:16px;padding:16px}
+footer{margin-top:auto;padding-top:6px}
+@media (prefers-reduced-motion:no-preference){.screen{animation:in .28s ease-out}@keyframes in{from{opacity:0;transform:translateY(8px)}}}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <!-- START -->
+  <section class="screen" id="start">
+    <p class="eyebrow">Level 5 · Cloud Engineering</p>
+    <h1>PATH<br><span>FINDER.</span></h1>
+    <svg class="fork" viewBox="0 0 520 150" aria-hidden="true">
+      <path d="M252 0 V48 C252 88 70 72 70 118 V150" fill="none" stroke="#1E55FF" stroke-width="10" stroke-linecap="round"/>
+      <path d="M268 0 V48 C268 88 450 72 450 118 V150" fill="none" stroke="#15181D" stroke-width="10" stroke-linecap="round"/>
+      <circle cx="260" cy="52" r="20" fill="#F8F9FB" stroke="#15181D" stroke-width="5"/>
+      <text x="260" y="58" text-anchor="middle" font-family="Source Code Pro, monospace" font-weight="600" font-size="15" fill="#15181D">Y2</text>
+    </svg>
+    <p class="lede">In Year 2 the course splits in two. Answer 8 quick questions and see which path fits how you like to work.</p>
+    <div class="paths">
+      <div><b>Cloud Infrastructure &amp; Services</b><span>Keeping systems fast, secure and always on.</span></div>
+      <div><b>Digital Solutioning &amp; Technologies</b><span>Building the apps and tools people use.</span></div>
+    </div>
+    <button class="btn" id="go">Start · about 1 min</button>
+    <p class="fine">Just for fun, not an official recommendation. No sign-up, nothing is saved or sent.</p>
+  </section>
+
+  <!-- QUESTION -->
+  <section class="screen" id="quiz" hidden>
+    <div class="route" id="route" aria-hidden="true"></div>
+    <p class="qnum" id="qnum">QUESTION 1 OF 8</p>
+    <h2 class="q" id="qtext"></h2>
+    <div class="answers" id="answers"></div>
+    <button class="back" id="back">← Back</button>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" id="result" hidden>
+    <p class="eyebrow">Your path</p>
+    <div class="res-card">
+      <div class="res-hd" id="rhd">
+        <p class="eyebrow" id="rlead">You lean towards</p>
+        <h2 id="rname"></h2>
+        <p id="rline"></p>
+      </div>
+      <div class="split">
+        <div class="bar" id="rbar"><i></i><i></i></div>
+        <div class="bar-k"><span id="kL"></span><span id="kR"></span></div>
+      </div>
+      <div class="res-bd" id="rbody"></div>
+    </div>
+    <div class="note"><b>Not a final answer.</b>Year 1 and the Year 2 core are the same for everyone, so you have time. Talk to your PEM or lecturers before you choose.</div>
+    <div class="row">
+      <button class="btn ghost" id="again">Retake</button>
+      <button class="btn" id="other">See the other path</button>
+    </div>
+    <footer><p class="fine">Modules and career examples from the MOE CourseFinder listing for C75 Cloud Engineering and NYP’s course page (Nov 2026). Module names may change.</p></footer>
+  </section>
+</main>
+
+<script>
+'use strict';
+// C = Cloud Infrastructure & Services, D = Digital Solutioning & Technologies
+const QUESTIONS = [
+  { q:'Your group project crashes the night before the demo. You’d rather…',
+    a:[['Find out why the server fell over and make sure it never happens again','C'],
+       ['Rebuild the broken screen so the demo still looks clean','D']] },
+  { q:'Which sounds more satisfying?',
+    a:[['A system that runs 24/7 and nobody notices, because it never breaks','C'],
+       ['An app people open every day because it actually solves their problem','D']] },
+  { q:'Pick a weekend side quest.',
+    a:[['Set up a game server for your friends and keep it running smoothly','C'],
+       ['Build a website or bot that automates something annoying','D']] },
+  { q:'Your favourite app drops a huge update. You’d rather have built…',
+    a:[['The setup that let millions of people download it at the same time','C'],
+       ['The new features everyone is talking about','D']] },
+  { q:'Which would you rather learn next?',
+    a:[['How networks, servers and security keep data safe','C'],
+       ['How to design databases and apps around how people work','D']] },
+  { q:'A company wants to “go digital”. Your job is to…',
+    a:[['Move their systems to the cloud and keep them secure','C'],
+       ['Redesign how they work and automate the boring parts','D']] },
+  { q:'When you’re stuck on something, you usually…',
+    a:[['Tinker under the hood until it works perfectly','C'],
+       ['Sketch ideas, ask people, and try a different angle','D']] },
+  { q:'You want to help the planet with tech. You’d rather…',
+    a:[['Make data centres run on less power','C'],
+       ['Build experiences that get people to change their habits','D']] },
+];
+const PATHS = {
+  C:{ name:'Cloud Infrastructure & Services', short:'Cloud Infra', cls:'',
+      line:'You like making systems fast, secure and always on. You’d be the reason things don’t break.',
+      y2:['Network Design & Operations','Advanced Server Administration','Cloud Technologies Implementation','Cybersecurity Measures'],
+      y3:['AI Cloud & Green Data Centre Automation','Agile Solutions Deployment','Integrated Infrastructure Project'],
+      jobs:['Infrastructure Engineer','Network Engineer','SysOps Engineer','DevOps Engineer'] },
+  D:{ name:'Digital Solutioning & Technologies', short:'Digital Solutioning', cls:'ink',
+      line:'You like building the apps and tools people actually use, and making them fit how people work.',
+      y2:['Interactive Application Development','Database Design','Business Process Automation','Service Design & Innovation'],
+      y3:['Interdisciplinary Digital Transformation','Immersive Experience & Green Technologies','Digital Solutioning Project'],
+      jobs:['Software Engineer','DevOps Engineer'] },
+};
+const $=id=>document.getElementById(id);
+let answers=[], i=0, shown='';
+
+function show(id){ ['start','quiz','result'].forEach(s=>$(s).hidden = s!==id); window.scrollTo(0,0); }
+function route(){
+  const r=$('route'); r.innerHTML='';
+  QUESTIONS.forEach((_,k)=>{
+    if(k) { const seg=document.createElement('i'); if(k<=i) seg.className='done'; r.appendChild(seg); }
+    const n=document.createElement('b'); n.className = k<i?'done':(k===i?'now':''); r.appendChild(n);
+  });
+}
+function ask(){
+  const Q=QUESTIONS[i]; route();
+  $('qnum').textContent=`QUESTION ${i+1} OF ${QUESTIONS.length}`;
+  $('qtext').textContent=Q.q;
+  // shuffle the order of the two options each time so position doesn't bias anyone
+  const opts = Q.a.map((x,k)=>({t:x[0],p:x[1],k})); if (Math.random()<.5) opts.reverse();
+  const box=$('answers'); box.innerHTML='';
+  opts.forEach((o,idx)=>{
+    const b=document.createElement('button'); b.className='ans'; b.type='button';
+    b.innerHTML=`<span class="k">${'AB'[idx]}</span><span></span>`; b.lastChild.textContent=o.t;
+    if (answers[i]===o.p) b.classList.add('pick');
+    b.onclick=()=>{ b.classList.add('pick'); answers[i]=o.p; setTimeout(next,170); };
+    box.appendChild(b);
+  });
+  $('back').hidden = i===0;
+}
+function next(){ i++; if(i<QUESTIONS.length) ask(); else result(); }
+function result(force){
+  const c=answers.filter(x=>x==='C').length, d=QUESTIONS.length-c;
+  let key = force || (c>d?'C':d>c?'D':'tie');
+  const tie = key==='tie'; if (tie) key='C';
+  shown=key; const P=PATHS[key];
+  $('rhd').className='res-hd '+P.cls;
+  $('rlead').textContent = force ? 'The other path' : tie ? 'It’s a tie, both fit you' : 'You lean towards';
+  $('rname').textContent=P.name; $('rline').textContent=P.line;
+  $('rbar').children[0].style.flex=c||0.0001; $('rbar').children[1].style.flex=d||0.0001;
+  $('kL').textContent=`CLOUD INFRA ${c}/${QUESTIONS.length}`; $('kR').textContent=`DIGITAL ${d}/${QUESTIONS.length}`;
+  const list=a=>'<ul>'+a.map(x=>`<li>${x.replace(/&/g,'&amp;')}</li>`).join('')+'</ul>';
+  $('rbody').innerHTML=`<div><h3>Year 2 · what you’d learn</h3>${list(P.y2)}</div>
+    <div><h3>Year 3</h3>${list(P.y3)}</div>
+    <div><h3>Where it can lead</h3><div class="jobs">${P.jobs.map(j=>`<span>${j}</span>`).join('')}</div></div>`;
+  $('other').textContent = 'See the other path';
+  show('result');
+}
+$('go').onclick=()=>{ answers=[]; i=0; show('quiz'); ask(); };
+$('back').onclick=()=>{ if(i>0){ i--; ask(); } };
+$('again').onclick=()=>{ answers=[]; i=0; show('start'); };
+$('other').onclick=()=>result(shown==='C'?'D':'C');
+</script>
+</body>
+</html>
