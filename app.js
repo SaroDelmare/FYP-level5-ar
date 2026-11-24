@@ -415,7 +415,7 @@ function buildPlay(i) {
   cancelAnimationFrame(rafId);
   const t = TARGETS[i], body = $('playBody'); body.innerHTML = '';
   $('ttlFile').textContent = t.kind === 'card' ? CARDS[t.card].file : 'Gear machine';
-  $('ttlConcept').textContent = t.kind === 'card' ? CARDS[t.card].concept : 'challenge help';
+  $('ttlConcept').textContent = t.kind === 'card' ? CARDS[t.card].concept : 'hints + answers';
   view = t.kind === 'card' ? makeCardView(CARDS[t.card], t) : makeGearView(t);
   view.build(body);
 }
@@ -518,7 +518,7 @@ function makeCardView(def, target) {
   v.build = body => {
     const wrap = h('div', 'cardwrap'); wrap.appendChild(cardSVG(target.card)); body.appendChild(wrap);
     const stage = h('div', 'stage'), scene = h('div', 'scene' + (def.dark ? ' dark' : '')), cv = h('canvas'), con = h('div', 'console', '<span class="hd">OUTPUT</span>');
-    scene.appendChild(cv); stage.append(scene, con); body.appendChild(stage); v.con = con;
+    scene.appendChild(cv); stage.append(scene, con); body.appendChild(stage); v.con = con; if (def.noConsole) con.style.display = 'none';
     const panel = h('div', 'panel'); body.appendChild(panel);
     v.wrap = wrap; v.cv = cv; v.stage = stage; v.panel = panel;
     v.tr = Tracer(wrap); v.tr.out = (s, k) => v.out(s, k); v.run = Runner(v.tr);
@@ -530,7 +530,7 @@ function makeCardView(def, target) {
     def.init(v);
   };
   /* scenes are drawn in a 1000 x 560 design box, scaled to fit the stage */
-  v.toDesign = (x, y) => { const s = v.sw / 1000; return { x: x / s, y: y / s - (v.oy || 0) }; };
+  v.toDesign = (x, y) => { const s = v.sc || v.sw / 1000; return { x: (x - (v.ox || 0)) / s, y: y / s - (v.oy || 0) }; };
   v.slot = () => v.wrap.getBoundingClientRect();
   v.out = (s, kind) => { const d = h('div', 'ln' + (kind ? ' ' + kind : '')); d.textContent = s; v.con.appendChild(d); const lines = v.con.querySelectorAll('.ln'); if (lines.length > 6) lines[0].remove(); };
   v.clearOut = () => v.con.querySelectorAll('.ln').forEach(e => e.remove());
@@ -539,7 +539,7 @@ function makeCardView(def, target) {
     v.t += dt / 1000; v.run.update(dt); def.update && def.update(v, dt);
     const c = v.ctx, dpr = v.cv.width / v.sw; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, v.sw, v.sh);
     c.fillStyle = def.dark ? COL.ink : COL.light; c.fillRect(0, 0, v.sw, v.sh);
-    const s = v.sw / 1000; v.DH = v.sh / s; v.oy = Math.max(0, (v.DH - 560) / 2); c.scale(s, s);     // width-fit; scenes get the full height
+    const s = Math.min(v.sw / 1000, v.sh / 560); v.sc = s; v.ox = (v.sw - 1000 * s) / 2; v.DH = v.sh / s; v.oy = Math.max(0, (v.DH - 560) / 2); c.translate(v.ox, 0); c.scale(s, s);
     def.draw(v, c);
   };
   v.destroy = () => { v.ro && v.ro.disconnect(); def.destroy && def.destroy(v); };
@@ -619,22 +619,22 @@ function saveBest() { try { localStorage.setItem('l5ar-best', JSON.stringify(BES
 const starsFor = (score, th) => th.filter(t => score >= t).length;
 
 /* ---------- golden cards: a second, harder target per game ---------- */
-const GOLD = { broke: 10000, procrastination: 40000, deadline: 4000, lecture: 8000 };
+const GOLD = { broke: 10000, procrastination: 40000, deadline: 3500, lecture: 8000 };
 const DEMO = new Set();          // games whose demo round has been played this visit
 function isGold(id) { return (BEST[id] || 0) >= (GOLD[id] || Infinity); }
 
 /* ---------- how to play: plain-English code walkthrough + steps, auto-opens the first time ---------- */
 const HOWTO = {
   broke: { title: 'CAUGHT?', code: [[3, 'if netflix.password_sharing_detected():', 'Netflix checks if you share passwords'], [4, '    raise BrokeError(…)', 'runs if it’s True: you’re caught'], [6, '    print("Still on my friend’s account.")', 'runs if it’s False: you’re safe']],
-    steps: ['Read what the check returns.', '<b>True</b> → tap <b>CAUGHT</b>. <b>False</b> → tap <b>SAFE</b>.', 'Right answers add time to the clock. Wrong ones take time away.', 'It gets trickier as you go.'] },
+    steps: ['Read what the check returns.', '<b>True</b> → tap <b>CAUGHT</b>. <b>False</b> → tap <b>SAFE</b>.', 'You start with 45 seconds. Right answers add 2s, wrong ones take 3s away.', 'It starts easy and gets harder.'] },
   procrastination: { title: 'BREAK THE LOOP', code: [[3, 'while True:', 'repeats forever'], [8, '        time.sleep(30)', 'last line of the loop: break goes here']],
     steps: ['A dot runs round the loop, 3 → 8, over and over.', 'Tap <b>BREAK</b> when it hits <b>8</b>.', 'Miss and you lose a life. It speeds up after every break.'] },
-  deadline: { title: 'THE DEADLINE', code: [[1, 'if days_left == 7:', '7 days left: always chill'], [4, 'elif days_left == 1:', 'you change this line: it picks your panic days']],
-    steps: ['Make <b>your week</b> match the <b>goal</b>.', 'Spin the two wheels on line 4.', 'When it matches, hold still to lock it in.', 'Every lock adds 5 seconds.'] },
+  deadline: { title: 'THE DEADLINE', code: [[1, 'if days_left == 7:', '7 days left: always chill'], [4, 'elif days_left == 1:', 'this line picks which days you panic']],
+    steps: ['Each tile is a day, counting down from 7 days left.', 'The two wheels change line 4. The words under them say what it means.', 'Make <b>your</b> tiles match the <b>goal</b> tiles, then hold still to lock it.', 'You get 60 seconds. Every lock adds 5.'] },
   lecture: { title: 'DO NOT DISTURB', code: [[3, 'try:', 'try to…'], [4, '    lecture.listen(minutes=5)', '…listen for 5 minutes'], [5, 'except AttentionSpanError:', 'lose focus and the phone comes out']],
     steps: ['<b>Hold</b> the button to listen.', '<b>Tap</b> notifications away with your other thumb.', '<b>Don’t</b> tap EXAM INFO.', 'Last until 5:00.'] },
   gears: { title: 'GEAR HELP', code: [],
-    steps: ['Pick the challenge you’re on.', 'Tap gears so this board matches your wall.', 'Hold <b>Turn</b> to test it.', 'Stuck? Tap <b>Hint</b> or <b>Answer</b>.'] },
+    steps: ['Pick the challenge you’re stuck on.', '<b>Hint</b> circles the gears to change.', '<b>Answer</b> shows the full setup, spinning.', 'Then do it for real on the wall.'] },
 };
 const HOW_SEEN = (() => { try { return new Set(JSON.parse(localStorage.getItem('l5ar-how') || '[]')); } catch (e) { return new Set(); } })();
 const seenHow = id => HOW_SEEN.has(id);
@@ -719,8 +719,8 @@ function holoArt(id, stars, gold) {
   const d = HOLO[id], cv = document.createElement('canvas'); cv.width = 600; cv.height = 840; const c = cv.getContext('2d');
   const g = c.createLinearGradient(0, 0, 600, 840); if (gold) { g.addColorStop(0, '#5A4210'); g.addColorStop(.5, '#1E1608'); g.addColorStop(1, '#6E5214'); } else { g.addColorStop(0, '#1A2A6E'); g.addColorStop(.5, COL.ink); g.addColorStop(1, '#0E1A4A'); } c.fillStyle = g; c.fillRect(0, 0, 600, 840);
   c.strokeStyle = 'rgba(161,183,253,.12)'; c.lineWidth = 2; for (let x = 0; x <= 600; x += 40) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 840); c.stroke(); } for (let y = 0; y <= 840; y += 40) { c.beginPath(); c.moveTo(0, y); c.lineTo(600, y); c.stroke(); }
-  c.font = `600 26px ${F.m}`; c.fillStyle = gold ? '#F2C94C' : COL.p40; c.textAlign = 'left'; c.fillText(gold ? 'GOLDEN · LEVEL 5' : 'LEVEL 5 · AR', 40, 66);
-  c.textAlign = 'right'; c.fillText(d.file, 560, 66);
+  c.font = `600 22px ${F.m}`; c.fillStyle = gold ? '#F2C94C' : COL.p40; c.textAlign = 'left'; c.fillText('BLK S · LEVEL 5', 40, 64);
+  c.textAlign = 'right'; let fs = 22; c.font = `600 ${fs}px ${F.m}`; while (c.measureText(d.file).width > 300 && fs > 14) { fs--; c.font = `600 ${fs}px ${F.m}`; } c.fillText(d.file, 560, 64);
   // icon
   c.save(); c.translate(300, 330); glow(c, gold ? '#F2C94C' : NEON, 40); c.strokeStyle = COL.light; c.fillStyle = gold ? '#C9971C' : COL.primary; c.lineWidth = 14; c.lineJoin = 'round'; c.lineCap = 'round';
   if (d.icon === 'wallet') { rr(c, -150, -90, 300, 200, 36); c.fill(); c.stroke(); rr(c, -150, -130, 300, 90, 36); c.fillStyle = COL.accent; c.fill(); c.stroke(); for (let k = 0; k < 4; k++) { circle(c, -96 + k * 64, -140 - (k % 2) * 14, 26, COL.light); } }
@@ -852,12 +852,12 @@ const EXPR = [
 ];
 CARDS[0] = {
   file: 'broke.py', concept: 'if / else', stamp: 'broke', dark: true,
-  game: 'CAUGHT?', tagline: 'The check returns something. <b>True → CAUGHT, False → SAFE.</b> Right answers add time, wrong ones take it away.',
+  game: 'CAUGHT?', tagline: 'The check returns something. <b>True → CAUGHT, False → SAFE.</b> You start with 45s: +2s if right, −3s if wrong.',
   stars: [1500, 4000, 8000],
   init(v) { v.fx = makeFX(); v.s = { phase: 'intro', score: 0, combo: 0, lives: 3, n: 0, right: 0, coins: 0, flip: 0 }; },
   start(v) { v.tr.hl(3); gameIntro(v, this); if (!seenHow(this.stamp)) showHow(this.stamp); },
   play(v) {
-    Object.assign(v.s, { phase: 'q', score: 0, combo: 0, n: 0, right: 0, wrong: 0, coins: 0, clock: 40, demoN: DEMO.has('broke') ? 0 : 2, expr: null }); v.clearOut(); v.tr.reset();
+    Object.assign(v.s, { phase: 'q', score: 0, combo: 0, n: 0, right: 0, wrong: 0, coins: 0, clock: 45, demoN: DEMO.has('broke') ? 0 : 2, expr: null }); v.clearOut(); v.tr.reset();
     v.ui.clear(); v.ui.prompt.className = 'prompt'; v.ui.prompt.innerHTML = ''; v.ui.row(true);
     const a = v.ui.choice(4, 'CAUGHT', 'True · line 4 runs', () => this.answer(v, 4)), b = v.ui.choice(6, 'SAFE', 'False · line 6 runs', () => this.answer(v, 6));
     a.classList.add('big'); b.classList.add('big'); v.btns = [a, b];
@@ -866,11 +866,16 @@ CARDS[0] = {
   },
   next(v) {
     const s = v.s; s.practice = s.n < s.demoN;
-    const tier = s.practice ? 0 : Math.min(EXPR.length - 1, Math.floor(s.right / 5));
+    const tier = 0;
     let e;
     if (s.practice) { s.firstVal = s.n === 0 ? Math.random() < .5 : !s.firstVal; e = [s.firstVal ? 'True' : 'False', s.firstVal ? 1 : 0]; }
-    else { const pool = Math.random() < .6 || tier === 0 ? EXPR[tier] : EXPR[(Math.random() * tier) | 0]; e = pool[(Math.random() * pool.length) | 0]; }   // fully random, mostly the current level
-    s.expr = e[0]; s.val = !!e[1]; s.tier = tier; s.flip = 0; s.phase = 'q'; s.n++;
+    else {
+      // stages: easy → medium → harder → hard → mix (60 hard / 30 medium / 10 easy) → hard only
+      const q = s.right + s.wrong, r = Math.random();
+      const t = q < 5 ? 0 : q < 10 ? 1 : q < 15 ? 2 : q < 22 ? 3 : q < 32 ? (r < .6 ? 3 : r < .9 ? (Math.random() < .5 ? 1 : 2) : 0) : 3;
+      const pool = EXPR[t].filter(x => x[0] !== s.expr); e = pool[(Math.random() * pool.length) | 0]; s.tier = t;
+    }
+    s.expr = e[0]; s.val = !!e[1]; if (s.practice) s.tier = 0; s.flip = 0; s.phase = 'q'; s.n++;
     v.btns.forEach(b => b.classList.remove('guide', 'dim'));
     if (s.practice) { const want = s.val ? 0 : 1; v.btns[want].classList.add('guide'); v.btns[1 - want].classList.add('dim');
       v.ui.prompt.className = 'prompt guidep'; v.ui.prompt.innerHTML = `<p class="eyebrow">Demo ${s.n} of ${s.demoN}</p><p>It came back <b>${s.expr}</b>. ${s.val ? '<b>True</b> means line 4 runs, so tap <b>CAUGHT</b>.' : '<b>False</b> means the else runs (line 6), so tap <b>SAFE</b>.'}</p>`; }
@@ -885,12 +890,12 @@ CARDS[0] = {
     v.btns.forEach(b => { const n = +b.querySelector('.n').textContent; if (n === correct) b.classList.add('right'); else if (n === line) b.classList.add('wrong'); });
     if (ok) {
       s.combo++; if (!s.practice) s.right++; const pts = s.practice ? 0 : Math.round(60 * Math.min(3, 1 + (s.combo - 1) * .25) * (1 + s.tier * .25)); s.score += pts;
-      const gain = s.practice ? 0 : Math.max(.8, 2.2 - s.right * .04); s.clock += gain; if (gain) v.fx.pop(850, 120, `+${gain.toFixed(1)}s`, COL.p40, 40);
+      const qn = s.right + s.wrong, gain = s.practice ? 0 : qn < 25 ? 2 : qn < 40 ? 1.5 : 1; s.clock += gain; if (gain) v.fx.pop(850, 120, `+${gain}s`, COL.p40, 40);
       if (pts) v.fx.pop(500, 200, '+' + pts, COL.light, 64); v.fx.burst(500, 240, 26, [COL.light, NEON, COL.p40], 620, 12); v.fx.ring(500, 240);
       if (s.combo % 5 === 0) { v.fx.pop(500, 120, `${s.combo} IN A ROW!`, COL.p40, 50); sfx.win(); } else sfx.ok();
       s.coins = 1; v.out(s.val ? 'BrokeError: Goodbye, food budget.' : 'Still on my friend\'s account.', s.val ? 'err' : null);
     } else {
-      if (!s.practice) { s.clock = Math.max(0, s.clock - 4); s.wrong++; v.fx.pop(850, 120, '−4s', COL.light, 44); } s.combo = 0; v.fx.hit(1); v.fx.flashIt(COL.primary, 1); sfx.err(); v.fx.pop(500, 200, 'WRONG LINE', COL.p40, 56);
+      if (!s.practice) { s.clock = Math.max(0, s.clock - 3); s.wrong++; v.fx.pop(850, 120, '−3s', COL.light, 44); } s.combo = 0; v.fx.hit(1); v.fx.flashIt(COL.primary, 1); sfx.err(); v.fx.pop(500, 200, 'WRONG LINE', COL.p40, 56);
       v.out(`${s.expr} is ${s.val}, so line ${correct} runs`, 'sys');
     }
   },
@@ -901,7 +906,7 @@ CARDS[0] = {
   },
   over(v) {
     const s = v.s; if (s.phase === 'over') return; s.phase = 'over'; v.tr.tappable(); v.ui.clear(); v.ui.row(false); v.ui.prompt.className = 'prompt'; v.ui.prompt.innerHTML = ''; sfx.no();
-    setTimeout(() => { gameIntro(v, this); showResults(v, this, s.score, [`${s.right} right`, `${s.wrong} wrong`, `reached level ${s.tier + 1} of 4`]); }, 500);
+    setTimeout(() => { gameIntro(v, this); showResults(v, this, s.score, [`${s.right} right`, `${s.wrong} wrong`, `${s.right + s.wrong} questions`]); }, 500);
   },
   draw(v, c) {
     const s = v.s; arcadeBG(c, v.t); c.save(); v.fx.pre(c); c.translate(0, v.oy);
@@ -926,7 +931,7 @@ CARDS[0] = {
       if (s.practice) { glow(c, NEON, 16); txt(c, 'DEMO · NO CLOCK', 500, 366, `700 30px ${F.d}`, COL.p40, 'center'); noGlow(c); }
       // level dots
       for (let i = 0; i < 4; i++) { circle(c, 446 + i * 36, 410, 9, i <= s.tier ? NEON : 'rgba(248,249,251,.15)'); }
-      txt(c, ['LEVEL 1 · TRUE / FALSE', 'LEVEL 2 · NOT', 'LEVEL 3 · AND / OR', 'LEVEL 4 · COMPARISONS'][s.tier || 0], 500, 460, `600 24px ${F.m}`, COL.p60, 'center');
+      txt(c, ['EASY · TRUE / FALSE', 'MEDIUM · NOT', 'HARDER · AND / OR', 'HARD · COMPARISONS'][s.tier || 0], 500, 460, `600 24px ${F.m}`, COL.p60, 'center');
       txt(c, 'True → CAUGHT (line 4)   ·   False → SAFE (line 6)', 500, 505, `600 24px ${F.m}`, 'rgba(248,249,251,.55)', 'center');
       if (s.phase === 'reveal' && !s.ok) { c.globalAlpha = clamp(1 - s.revealT, 0, 1); glow(c, NEON, 30); txt(c, s.val ? 'SHARING DETECTED' : 'YOU WERE SAFE', 500, 530, `700 44px ${F.d}`, COL.light, 'center'); noGlow(c); c.globalAlpha = 1; }
     }
@@ -1036,56 +1041,85 @@ function describeWeek(w) {
   if (p.length === 5) { const miss = [6, 5, 4, 3, 2, 1].find(d => !p.includes(d)); return `Panic every day except ${miss} days left`; }
   return 'Match this week';
 }
+const englishOf = (op, n) => ({
+  '==': `panic only with exactly ${n} day${n === 1 ? '' : 's'} left`,
+  '!=': `panic every day except ${n} day${n === 1 ? '' : 's'} left`,
+  '<': `panic when fewer than ${n} days are left`,
+  '<=': `panic when ${n} or fewer days are left`,
+  '>': `panic when more than ${n} days are left`,
+  '>=': `panic when ${n} or more days are left` })[op];
+const GOAL_OPS = s => s.solved < 3 ? ['<=', '=='] : s.solved < 6 ? ['<=', '==', '>=', '<'] : OPS;   // easy comparisons first
 CARDS[2] = {
-  file: 'deadline.py', concept: 'if / elif', stamp: 'deadline', dark: true,
-  game: 'THE DEADLINE', tagline: '<b>Spin the two wheels</b> on line 4 until your week matches the goal. Each lock adds 5 seconds.',
-  stars: [500, 1300, 2400],
-  init(v) { v.fx = makeFX(); v.s = { phase: 'intro', op: '==', n: 1, week: weekOf('==', 1), shown: weekOf('==', 1), flips: Array(7).fill(1), time: 45, score: 0, solved: 0, goal: null }; },
+  file: 'deadline.py', concept: 'if / elif', stamp: 'deadline', dark: true, noConsole: true,
+  game: 'THE DEADLINE', tagline: 'Line 4 decides which days you panic. <b>Spin the wheels</b> until your week matches the goal.',
+  stars: [400, 1000, 2000],
+  init(v) { v.fx = makeFX(); v.s = { phase: 'intro', op: '==', n: 1, week: weekOf('==', 1), flips: Array(7).fill(1), time: 60, score: 0, solved: 0, goal: null }; },
   start(v) { gameIntro(v, this); if (!seenHow(this.stamp)) showHow(this.stamp); },
   play(v) {
-    Object.assign(v.s, { phase: 'run', time: 50, score: 0, solved: 0, roundT: 0, tutorial: !DEMO.has('deadline') }); v.clearOut(); v.tr.reset();
+    const s = v.s; Object.assign(s, { phase: 'run', time: 60, score: 0, solved: 0, roundT: 0, demo: DEMO.has('deadline') ? 0 : 1, op: '==', n: 1, week: weekOf('==', 1) }); v.clearOut(); v.tr.reset();
     v.ui.clear(); v.ui.prompt.className = 'prompt'; v.ui.prompt.innerHTML = '';
-    const lock = h('div', 'lock'); lock.innerHTML = `<span class="kw">elif</span><span class="lv">days_left</span>`;
-    const w1 = this.wheel(OPS, OPS.indexOf(v.s.op), i => this.set(v, OPS[i], v.s.n)); const w2 = this.wheel([0, 1, 2, 3, 4, 5, 6, 7], v.s.n, i => this.set(v, v.s.op, i));
-    lock.append(w1, w2, Object.assign(h('span', 'lv'), { textContent: ':' })); v.ui.el.appendChild(lock);
-    this.newGoal(v); this.set(v, v.s.op, v.s.n, true);
+    const lock = h('div', 'lock');
+    const col = (lab, wh) => { const d = h('div', 'wcol'); d.appendChild(h('span', 'wlab', lab)); d.appendChild(wh); return d; };
+    v.w1 = this.wheel(OPS, 0, i => this.set(v, OPS[i], s.n)); v.w2 = this.wheel([0, 1, 2, 3, 4, 5, 6, 7], 1, i => this.set(v, s.op, i));
+    lock.append(h('span', 'kw', 'elif'), h('span', 'lv', 'days_left'), col('compare', v.w1), col('number', v.w2), h('span', 'lv', ':'));
+    v.eng = h('p', 'english'); v.ui.el.append(lock, v.eng);
+    this.newGoal(v); this.set(v, s.op, s.n, true); this.demoUI(v);
   },
   wheel(items, start, cb) {
     const w = h('div', 'wheel'), list = h('div', 'wlist'); w.appendChild(list);
     list.appendChild(h('div', 'wpad')); items.forEach(it => list.appendChild(h('div', 'witem', String(it)))); list.appendChild(h('div', 'wpad'));
     let cur = start; const IH = 52;
+    const mark = () => [...list.querySelectorAll('.witem')].forEach((e, i) => e.classList.toggle('on', i === cur));
     requestAnimationFrame(() => { list.scrollTop = start * IH; mark(); });
-    function mark() { [...list.querySelectorAll('.witem')].forEach((e, i) => e.classList.toggle('on', i === cur)); }
-    list.addEventListener('scroll', () => { wheelMoved = performance.now(); const i = clamp(Math.round(list.scrollTop / IH), 0, items.length - 1); if (i !== cur) { cur = i; mark(); blip(1500, .012, 'square', .02); buzz(5); cb(i); } }, { passive: true });
+    list.addEventListener('scroll', () => { if (w.classList.contains('off')) return; wheelMoved = performance.now(); const i = clamp(Math.round(list.scrollTop / IH), 0, items.length - 1); if (i !== cur) { cur = i; mark(); blip(1500, .012, 'square', .02); buzz(5); cb(i); } }, { passive: true });
+    w.setIndex = i => { cur = i; list.scrollTop = i * IH; mark(); };
+    w.lock = on => { w.classList.toggle('off', !!on); list.style.overflowY = on ? 'hidden' : 'scroll'; };
+    w.hint = on => w.classList.toggle('hintw', !!on);
     return w;
   },
+  demoUI(v) {
+    const s = v.s, p = v.ui.prompt;
+    v.w1.lock(s.demo === 1); v.w2.lock(s.demo === 2); v.w1.hint(s.demo === 2); v.w2.hint(s.demo === 1);
+    if (!s.demo) { p.className = 'prompt'; p.innerHTML = ''; return; }
+    p.className = 'prompt guidep';
+    p.innerHTML = s.demo === 1 ? `<p class="eyebrow">Demo 1 of 2</p><p>Spin <b>number</b> to <b>3</b>: you’ll panic with exactly 3 days left.</p>`
+      : `<p class="eyebrow">Demo 2 of 2</p><p>Spin <b>compare</b> to <b>&lt;=</b>: “3 or fewer” days left.</p>`;
+  },
   newGoal(v) {
-    const s = v.s; let op, n, w, tries = 0; s.match = false; s.lockT = 0;
-    if (s.tutorial) { s.goal = { w: weekOf('<=', 3), text: 'Start panicking with 3 days left' }; s.roundT = 0; s.goalIn = 0; return; }
-    do { op = OPS[(Math.random() * OPS.length) | 0]; n = (Math.random() * 8) | 0; w = weekOf(op, n); tries++; } while ((w === s.week || w === (s.goal && s.goal.w) || (describeWeek(w) === 'Match this week' && tries < 40)) && tries < 80);
-    s.goal = { w, text: describeWeek(w) }; s.roundT = 0; s.goalIn = 0;
+    const s = v.s; let op, n, w, tries = 0; s.match = false; s.lockT = 0; s.roundT = 0; s.goalIn = 0;
+    if (s.demo === 1) { s.goal = { w: weekOf('==', 3), text: 'Panic only with 3 days left' }; return; }
+    if (s.demo === 2) { s.goal = { w: weekOf('<=', 3), text: 'Start panicking with 3 days left' }; return; }
+    const ops = GOAL_OPS(s);
+    do { op = ops[(Math.random() * ops.length) | 0]; n = 1 + ((Math.random() * 6) | 0); w = weekOf(op, n); tries++; } while ((w === s.week || w === (s.goal && s.goal.w) || describeWeek(w) === 'Match this week' || !w.includes('P')) && tries < 80);
+    s.goal = { w, text: describeWeek(w) };
   },
   set(v, op, n, silent) {
     const s = v.s; s.op = op; s.n = n; const w = weekOf(op, n);
-    for (let i = 0; i < 7; i++) if (w[i] !== s.week[i]) { s.flips[i] = 0; }
+    for (let i = 0; i < 7; i++) if (w[i] !== s.week[i]) s.flips[i] = 0;
     s.week = w;
     v.tr.patch(4, [['elif', C.kw], [' days_left ', C.txt], [op, C.txt], [' ', C.txt], [String(n), C.str], [':', C.txt]], !silent);
+    if (v.eng) v.eng.innerHTML = `= <b>${englishOf(op, n)}</b>`;
     s.match = s.phase === 'run' && s.goal && w === s.goal.w; if (!s.match) s.lockT = 0;
   },
   solve(v) {
-    const s = v.s; if (s.tutorial) { s.tutorial = false; DEMO.add('deadline'); s.time = 50; v.fx.pop(500, 230, 'NOW FOR REAL', COL.light, 64); v.fx.flashIt(COL.light, .6); sfx.win(); s.phase = 'cracked'; s.ct = 0; v.out('practice cracked. the clock is on', 'ok'); return; }
-    s.solved++; const bonus = Math.max(0, Math.round(250 - s.roundT * 40)); const pts = 100 + bonus; s.score += pts; s.time += 5;
+    const s = v.s;
+    if (s.demo) {
+      v.fx.flashIt(COL.light, .6); sfx.ok(); v.fx.burst(500, 440, 30, [COL.light, NEON], 600, 10);
+      if (s.demo === 1) { s.demo = 2; v.out('demo: elif days_left == 3', 'ok'); s.phase = 'cracked'; s.ct = 0; s.nextDemo = true; return; }
+      s.demo = 0; DEMO.add('deadline'); s.time = 60; v.fx.pop(500, 230, 'NOW FOR REAL', COL.light, 64); sfx.win(); v.out('demo done. 60 seconds, go', 'ok'); s.phase = 'cracked'; s.ct = 0; this.demoUI(v); return;
+    }
+    s.solved++; const bonus = Math.max(0, Math.round(250 - s.roundT * 30)); const pts = 100 + bonus; s.score += pts; s.time += 5;
     v.fx.pop(500, 230, '+' + pts, COL.light, 70); v.fx.pop(500, 300, '+5s', COL.p40, 40); v.fx.burst(500, 440, 50, [COL.light, NEON, COL.p40], 760, 12); v.fx.ring(500, 440, COL.light, 30, 420); v.fx.flashIt(COL.light, .7);
-    sfx.win(); buzz([15, 30, 15]); v.out(`cracked: elif days_left ${s.op} ${s.n}`, 'ok');
+    sfx.win(); buzz([15, 30, 15]); v.out(`locked: elif days_left ${s.op} ${s.n}`, 'ok');
     s.phase = 'cracked'; s.ct = 0;
   },
   update(v, dt) {
     const s = v.s, k = dt / 1000; v.fx.update(dt); s.goalIn = Math.min(1, (s.goalIn || 0) + k * 3);
     for (let i = 0; i < 7; i++) if (s.flips[i] < 1) { const before = s.flips[i]; s.flips[i] = Math.min(1, s.flips[i] + k * (5 - i * .25)); if (before < .5 && s.flips[i] >= .5) blip(400 + i * 40, .02, 'square', .02); }
-    if (s.phase === 'run' && s.match) { if (performance.now() - wheelMoved > 140) { s.lockT += k; if (s.lockT >= LOCK_IN) this.solve(v); } else s.lockT = 0; }
-    if ((s.phase === 'run' || s.phase === 'cracked') && !s.tutorial) { s.time -= k; s.roundT += k; }
-    if (s.phase === 'run' || s.phase === 'cracked') { if (s.time <= 0) { s.time = 0; s.phase = 'over'; v.ui.clear(); sfx.no(); setTimeout(() => { gameIntro(v, this); showResults(v, this, s.score, [`${s.solved} locks cracked`]); }, 500); } }
-    if (s.phase === 'cracked') { s.ct += k; if (s.ct > .8) { s.phase = 'run'; this.newGoal(v); } }
+    if (s.phase === 'run' && s.match) { if (performance.now() - wheelMoved > 140) { s.lockT += k; if (s.lockT >= (s.demo ? .35 : LOCK_IN)) this.solve(v); } else s.lockT = 0; }
+    if ((s.phase === 'run' || s.phase === 'cracked') && !s.demo) { s.time -= k; s.roundT += k; }
+    if (s.phase === 'run' || s.phase === 'cracked') { if (s.time <= 0) { s.time = 0; s.phase = 'over'; v.ui.clear(); sfx.no(); setTimeout(() => { gameIntro(v, this); showResults(v, this, s.score, [`${s.solved} locked`]); }, 500); } }
+    if (s.phase === 'cracked') { s.ct += k; if (s.ct > .8) { s.phase = 'run'; if (s.nextDemo) { s.nextDemo = false; this.demoUI(v); } this.newGoal(v); this.set(v, s.op, s.n, true); } }
   },
   draw(v, c) {
     const s = v.s; arcadeBG(c, v.t); c.save(); v.fx.pre(c); c.translate(0, v.oy);
@@ -1093,18 +1127,21 @@ CARDS[2] = {
       glow(c, NEON, 40); txt(c, 'THE', 500, 196, `700 80px ${F.d}`, COL.light, 'center', 'middle'); txt(c, 'DEADLINE', 500, 290, `700 120px ${F.d}`, COL.p40, 'center', 'middle'); noGlow(c);
       for (let i = 0; i < 7; i++) this.tile(c, 108 + i * 116, 380, i, 'CPPNNNP'[i] || 'N', 1, 92);
     } else {
-      hudScore(c, s.score, 0); const tt = Math.ceil(s.time); if (s.tutorial) { txt(c, 'DEMO', 964, 74 - v.oy, `700 50px ${F.d}`, COL.p40, 'right'); } else { glow(c, tt <= 10 ? COL.light : NEON, 20); txt(c, `0:${String(tt).padStart(2, '0')}`, 964, 74 - v.oy, `700 60px ${F.d}`, tt <= 10 && Math.floor(v.t * 4) % 2 ? COL.p40 : COL.light, 'right'); noGlow(c); }
-      txt(c, `${s.solved} CRACKED`, 964, 108 - v.oy, `600 22px ${F.m}`, COL.p60, 'right');
+      hudScore(c, s.score, 0); const tt = Math.ceil(s.time);
+      if (s.demo) { glow(c, NEON, 16); txt(c, 'DEMO', 964, 74 - v.oy, `700 50px ${F.d}`, COL.p40, 'right'); noGlow(c); }
+      else { glow(c, tt <= 10 ? COL.light : NEON, 20); txt(c, `0:${String(tt).padStart(2, '0')}`, 964, 74 - v.oy, `700 60px ${F.d}`, tt <= 10 && Math.floor(v.t * 4) % 2 ? COL.p40 : COL.light, 'right'); noGlow(c); txt(c, `${s.solved} LOCKED`, 964, 108 - v.oy, `600 22px ${F.m}`, COL.p60, 'right'); }
       // goal
-      const gi = back(s.goalIn); c.save(); c.translate(500, 196); c.scale(gi, gi);
-      txt(c, 'GOAL', 0, -26, `600 22px ${F.m}`, COL.p60, 'center'); glow(c, NEON, 16); txt(c, s.goal.text, 0, 14, `700 40px ${F.b}`, COL.light, 'center'); noGlow(c); c.restore();
-      for (let i = 0; i < 7; i++) this.tile(c, 116 + i * 110, 236, i, s.goal.w[i], 1, 60, true);
-      // your week (split-flap)
-      txt(c, 'YOUR WEEK', 36, 352, `600 22px ${F.m}`, COL.p60);
-      for (let i = 0; i < 7; i++) this.tile(c, 116 + i * 110, 372, i, s.week[i], s.flips[i], 100, false, s.week[i] === s.goal.w[i]);
-      if (s.match && s.phase === 'run') { const q = clamp(s.lockT / LOCK_IN, 0, 1); fillRR(c, 60, 490, 880, 16, 8, 'rgba(248,249,251,.12)'); glow(c, COL.light, 20); fillRR(c, 60, 490, Math.max(16, 880 * q), 16, 8, COL.light); noGlow(c); txt(c, 'MATCH · HOLD STILL TO LOCK IN', 500, 538, `700 30px ${F.d}`, COL.light, 'center'); }
-      else if (s.tutorial) { glow(c, NEON, 16); txt(c, 'DEMO: spin the left wheel to <=  and the right to 3', 500, 530, `600 26px ${F.m}`, COL.p40, 'center'); noGlow(c); }
-      if (s.phase === 'cracked') { const q = back(clamp(s.ct * 4, 0, 1)); c.save(); c.translate(500, 420); c.scale(q, q); c.rotate(-.08); fillRR(c, -230, -54, 460, 108, 20, COL.light); glow(c, NEON, 30); txt(c, 'CRACKED', 0, 22, `700 80px ${F.d}`, COL.primary, 'center'); c.restore(); noGlow(c); }
+      const gi = back(s.goalIn); c.save(); c.translate(500, 150); c.scale(gi, gi);
+      glow(c, NEON, 16); txt(c, s.goal.text, 0, 0, `700 44px ${F.b}`, COL.light, 'center'); noGlow(c); c.restore();
+      const X = i => 164 + i * 112;
+      txt(c, 'GOAL', 28, 222, `600 24px ${F.m}`, COL.p60);
+      for (let i = 0; i < 7; i++) this.tile(c, X(i), 186, i, s.goal.w[i], 1, 74, true);
+      txt(c, 'YOU', 28, 352, `600 24px ${F.m}`, COL.light);
+      for (let i = 0; i < 7; i++) { const ok = s.week[i] === s.goal.w[i]; this.tile(c, X(i), 290, i, s.week[i], s.flips[i], 104, false, ok);
+        if (!ok && s.phase === 'run') { circle(c, X(i) + 40, 292, 15, COL.light); txt(c, '×', X(i) + 40, 294, `700 28px ${F.b}`, COL.ink, 'center', 'middle'); } }
+      if (s.match && s.phase === 'run') { const q = clamp(s.lockT / (s.demo ? .35 : LOCK_IN), 0, 1); fillRR(c, 60, 440, 880, 18, 9, 'rgba(248,249,251,.12)'); glow(c, COL.light, 20); fillRR(c, 60, 440, Math.max(18, 880 * q), 18, 9, COL.light); noGlow(c); txt(c, 'MATCH! HOLD STILL TO LOCK IT IN', 500, 506, `700 36px ${F.d}`, COL.light, 'center'); }
+      else if (s.phase === 'run') txt(c, 'Fix the days marked ×', 500, 480, `600 28px ${F.m}`, 'rgba(248,249,251,.5)', 'center');
+      if (s.phase === 'cracked') { const q = back(clamp(s.ct * 4, 0, 1)); c.save(); c.translate(500, 360); c.scale(q, q); c.rotate(-.08); fillRR(c, -210, -54, 420, 108, 20, COL.light); glow(c, NEON, 30); txt(c, 'LOCKED', 0, 22, `700 80px ${F.d}`, COL.primary, 'center'); c.restore(); noGlow(c); }
     }
     v.fx.draw(c); c.restore();
   },
@@ -1113,14 +1150,14 @@ CARDS[2] = {
     const f = flip < .5 ? 1 - flip * 2 : (flip - .5) * 2;
     c.save(); c.translate(x, y + hh / 2); c.scale(1, Math.max(.04, f)); c.translate(-x, -(y + hh / 2));
     const fill = st === 'P' ? COL.primary : st === 'C' ? '#1C2B5E' : '#1E2229';
-    if (!ghost && st === 'P') glow(c, NEON, 20);
-    fillRR(c, x - w / 2, y, w, hh, 10, ghost ? 'rgba(248,249,251,.06)' : fill); noGlow(c);
-    strokeRR(c, x - w / 2, y, w, hh, 10, ghost ? (st === 'P' ? NEON : 'rgba(248,249,251,.25)') : match ? COL.light : 'rgba(248,249,251,.18)', ghost ? 3 : match ? 4 : 2);
+    if (st === 'P') glow(c, NEON, ghost ? 8 : 20);
+    c.globalAlpha = ghost ? .8 : 1;
+    fillRR(c, x - w / 2, y, w, hh, 10, fill); noGlow(c);
+    strokeRR(c, x - w / 2, y, w, hh, 10, match ? COL.light : 'rgba(248,249,251,.22)', match && !ghost ? 4 : 2);
     c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(x - w / 2, y + hh / 2 - 1, w, 2);
-    txt(c, String(day), x, y + hh * .42, `700 ${Math.round(size * .42)}px ${F.d}`, ghost && st !== 'P' ? COL.g60 : COL.light, 'center', 'middle');
-    if (size >= 80) txt(c, st === 'P' ? 'panic' : st === 'C' ? 'chill' : 'zzz', x, y + hh * .82, `600 22px ${F.m}`, st === 'P' ? COL.sky : COL.g60, 'center', 'middle');
-    else if (st === 'P') bolt(c, x, y + hh * .8, 1, COL.light);
-    c.restore();
+    txt(c, String(day), x, y + hh * .42, `700 ${Math.round(size * .42)}px ${F.d}`, COL.light, 'center', 'middle');
+    txt(c, st === 'P' ? 'panic' : st === 'C' ? 'chill' : 'zzz', x, y + hh * .82, `600 22px ${F.m}`, st === 'P' ? COL.sky : COL.g60, 'center', 'middle');
+    c.globalAlpha = 1; c.restore();
   },
 };
 
@@ -1137,8 +1174,7 @@ CARDS[3] = {
   init(v) { v.fx = makeFX(); v.s = { phase: 'intro', att: 1, sec: 0, t: 0, notes: [], score: 0, combo: 0, lastSwat: 0, shield: 0, swats: 0 }; },
   start(v) { gameIntro(v, this); if (!seenHow(this.stamp)) showHow(this.stamp); },
   play(v) {
-    const s = v.s; Object.assign(s, { phase: 'ready', att: 1, sec: 0, t: 0, notes: [], score: 0, combo: 0, lastSwat: 0, shield: 0, swats: 0, phoneT: 0, idx: 0, oops: 0, demo: !DEMO.has('lecture'), dstep: 0 });
-    this.demoSay(v); v.clearOut(); v.tr.reset(); v.tr.hl(4);
+    const s = v.s; Object.assign(s, { phase: 'ready', att: 1, sec: 0, t: 0, notes: [], score: 0, combo: 0, lastSwat: 0, shield: 0, swats: 0, phoneT: 0, idx: 0, oops: 0, demo: !DEMO.has('lecture'), dstep: 0 }); v.clearOut(); v.tr.reset(); v.tr.hl(4);
     v.ui.clear(); v.ui.prompt.className = 'prompt'; v.ui.prompt.innerHTML = '';
     const b = v.ui.button('<span>Hold to listen</span>', () => {}, 'hold'); const fill = h('i', 'fill'); b.prepend(fill); v.holdBtn = b; v.holdFill = fill;
     const down = e => { e.preventDefault(); audioInit(); b.classList.add('down');
@@ -1146,6 +1182,7 @@ CARDS[3] = {
       else if (s.phase === 'ready') { s.phase = 'listen'; s.nextNote = .6; sfx.step(); } };
     const up = () => { if (!b.classList.contains('down')) return; b.classList.remove('down'); if (s.phase === 'listen') this.fail(v, 'You let go.'); else if (s.phase === 'demo') { s.phase = 'ready'; this.demoSay(v); } };
     if (s.demo) b.classList.add('pulse');
+    this.demoSay(v);
     b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('contextmenu', e => e.preventDefault());
   },
   demoNote(v, kind) {
@@ -1333,37 +1370,35 @@ function makeGearView(target) {
     const r = v.svg.getBoundingClientRect(), s = Math.min(r.width / VB[2], r.height / VB[3]), w = VB[2] * s, hh = VB[3] * s;
     return { left: r.left + (r.width - w) / 2, top: r.top + (r.height - hh) / 2, right: r.left + (r.width + w) / 2, bottom: r.top + (r.height + hh) / 2 };
   };
-  function toggle(id) {
+  function toggle(id) { return;   // help mode: the board only shows hints and answers
     if (v.ins.has(id)) v.ins.delete(id); else v.ins.add(id);
     sfx.clunk(); const el = v.gearEl[id].g; el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.0)' }], { duration: 1 });
-    v.jamT = 0; sync(); checkSolved();
+    v.jamT = 0; sync();
   }
   function sync() {
     Object.entries(v.gearEl).forEach(([id, e]) => { e.g.classList.toggle('out', !FIXED.includes(id) && !v.ins.has(id)); e.g.classList.toggle('hl', v.hl.has(id)); });
     renderPanel();
   }
+  function setChal(i) { v.chal = i; v.hint = 0; const prev = i ? CHAL[i - 1].answer : []; v.ins = new Set(prev); v.hl.clear(); sync(); }
   function renderPanel() {
     const p = v.panel; p.innerHTML = '';
     const chips = h('div', 'chips'); p.appendChild(chips);
-    CHAL.forEach((c, i) => { const b = h('button', (i === v.chal ? 'on' : '') + (v.solved.has(c.id) ? ' solved' : ''), c.id); b.onclick = () => { sfx.tap(); v.chal = i; v.hint = 0; v.hl.clear(); sync(); }; chips.appendChild(b); });
+    CHAL.forEach((c, i) => { const b = h('button', i === v.chal ? 'on' : '', c.id); b.onclick = () => { sfx.tap(); setChal(i); }; chips.appendChild(b); });
     const c = CHAL[v.chal], g = c.goal;
     const tags = Object.entries(g).map(([k, d]) => k === 'F' ? `<span class="tag">F spins too</span>` : `<span class="tag">${ARROW(d === 1, COL.primary)}${k === 'OL' ? 'Left' : 'Right'} ${d === 1 ? 'clockwise' : 'anticlockwise'}</span>`).join('');
     p.appendChild(h('div', 'goal', `${tags}<span class="mono" style="font-size:14px;color:var(--g75)">${c.moves} move${c.moves > 1 ? 's' : ''}</span>`));
     const pr = h('div', 'prompt'); p.appendChild(pr);
-    const prev = v.chal ? CHAL[v.chal - 1] : null, change = prev ? diff(prev.answer, c.answer) : diff([], c.answer), r = gearSpin(v.ins);
-    if (r.jam) pr.innerHTML = `<p class="eyebrow">Jammed</p><p><b>${r.jam.map(x => LABEL[x]).join(', ')}</b> push against each other in a loop. Pull one of them out.</p>`;
-    else if (goalOK(v.ins, g)) pr.innerHTML = `<p class="eyebrow">That works</p><p>Hold <b>Turn</b> to watch it, then do the same on the wall.</p>`;
-    else if (v.hint === 0) pr.innerHTML = `<p class="eyebrow">Challenge ${c.id}</p><p><b>Copy your wall:</b> tap gears so this board matches yours, then hold <b>Turn</b> to test it.</p>`;
-    else if (v.hint === 1) pr.innerHTML = `<p class="eyebrow">Hint</p><p>${prev ? `From the ${prev.id} answer, change` : 'Push in'} <b>${change.map(x => LABEL[x.g]).join(', ')}</b>. They’re circled.</p>`;
-    else pr.innerHTML = `<p class="eyebrow">Answer</p><p>${change.map(x => `${x.in ? 'push in' : 'pull out'} <b>${LABEL[x.g]}</b>`).join(' · ')}. Lost? Pull everything out and push in <b>${c.fresh.map(x => LABEL[x]).join(', ')}</b>.</p>`;
+    const prev = v.chal ? CHAL[v.chal - 1] : null, change = prev ? diff(prev.answer, c.answer) : diff([], c.answer);
+    const from = prev ? `the ${prev.id} answer (shown)` : 'every gear pulled out';
+    if (v.hint === 0) pr.innerHTML = `<p class="eyebrow">Stuck on ${c.id}?</p><p>The board shows ${from}. Tap <b>Hint</b> to see which gears to change, or <b>Answer</b> for the full setup.</p>`;
+    else if (v.hint === 1) pr.innerHTML = `<p class="eyebrow">Hint</p><p>From ${from}, change the circled gear${change.length > 1 ? 's' : ''}: <b>${change.map(x => LABEL[x.g]).join(', ')}</b>.</p>`;
+    else pr.innerHTML = `<p class="eyebrow">Answer</p><p>${change.map(x => `${x.in ? 'push in' : 'pull out'} <b>${LABEL[x.g]}</b>`).join(' · ')}.<br><span style="color:var(--g75);font-size:15px">Lost? Pull everything out, then push in ${c.fresh.map(x => LABEL[x]).join(', ')}.</span></p>`;
     const hints = h('div', 'hints'); p.appendChild(hints);
     [['Hint', 1], ['Answer', 2]].forEach(([lab, lvl]) => {
-      const b = h('button', 'btn ' + (v.hint >= lvl ? '' : 'light'), lab);
-      b.onclick = () => { audioInit(); sfx.tap(); v.hint = Math.max(v.hint, lvl); v.hl = new Set(change.map(x => x.g)); if (lvl === 2) { v.ins = new Set(c.answer); sfx.clunk(); } sync(); checkSolved(); };
+      const b = h('button', 'btn ' + (v.hint === lvl ? '' : 'light'), lab);
+      b.onclick = () => { audioInit(); sfx.tap(); v.hint = lvl; v.ins = new Set(lvl === 2 ? c.answer : prev ? prev.answer : []); v.hl = new Set(change.map(x => x.g)); if (lvl === 2) sfx.clunk(); sync(); };
       hints.appendChild(b);
     });
-    const row = h('div', 'ctrlrow'); p.appendChild(row); row.appendChild(turnButton());
-    const clr = h('button', 'btn light', 'Reset'); clr.onclick = () => { v.ins.clear(); sfx.clunk(); sync(); }; row.appendChild(clr); clr.style.flex = '0 0 32%';
   }
   function diff(a, b) { const A = new Set(a), B = new Set(b), out = []; ART.movable.forEach(g => { if (A.has(g) && !B.has(g)) out.push({ g, in: false }); if (!A.has(g) && B.has(g)) out.push({ g, in: true }); }); return out; }
   function turnButton() {
@@ -1375,15 +1410,14 @@ function makeGearView(target) {
     return b;
   }
   function checkSolved() {
-    const c = CHAL[v.chal];
-    if (goalOK(v.ins, c.goal) && !v.solved.has(c.id)) { v.solved.add(c.id); v.celebrate = 2.2; sfx.win(); if (v.hint < 2) setTimeout(() => showGearWin(c, 3 - v.hint, v.solved), 1600); sync(); }
+    return;
   }
-  v.start = () => { if (!seenHow('gears')) showHow('gears'); };
+  v.start = () => { setChal(0); if (!seenHow('gears')) showHow('gears'); };
   v.nextChallenge = () => { v.chal = Math.min(CHAL.length - 1, v.chal + 1); v.hint = 0; v.hl.clear(); sync(); };
   v.tick = (dt) => {
     const k = dt / 1000, r = gearSpin(v.ins);
     v.celebrate = Math.max(0, (v.celebrate || 0) - k);
-    v.turnV = lerp(v.turnV, (v.turning || v.celebrate > 0) && !r.jam ? (v.celebrate > 0 ? 2.6 : 1) : 0, Math.min(1, k * 6));
+    v.turnV = lerp(v.turnV, v.hint === 2 && !r.jam ? 1 : 0, Math.min(1, k * 4));
     if (v.turning && r.jam) { if (v.jamT === 0) { sfx.err(); } v.jamT += k; } else v.jamT = 0;
     const fx = v.fx; fx.innerHTML = '';
     Object.entries(v.gearEl).forEach(([id, e]) => {
