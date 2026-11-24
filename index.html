@@ -316,6 +316,56 @@ code,.mono{font-family:var(--mono)}
 .english{margin:4px 0 0;text-align:center;font-size:15px;line-height:1.35;color:var(--furniture)}
 .english code{font:600 14px var(--mono);background:var(--ink);color:var(--light);border-radius:6px;padding:2px 6px}
 .english b{color:var(--ink)}
+
+/* ---------- v7: fit every phone ---------- */
+:root{--pad:max(12px,var(--sl))}
+.bar{padding:calc(var(--st) + 6px) var(--pad) 6px}
+.bar .iconbtn{height:42px}
+.body{gap:10px;padding:2px var(--pad) calc(var(--sb) + 10px)}
+.cardwrap{width:min(100%, max(200px, calc((100dvh - 520px) * 1.553)));align-self:center}
+.stage{flex:1 1 auto;min-height:150px}
+.btn{min-height:52px}
+.hold{min-height:54px}
+.choice.big{min-height:68px}
+.breakbtn{min-height:76px}
+.introrow{display:flex;gap:10px}
+.introrow .btn:first-child{flex:1.5}.introrow .howbtn{flex:1;font-size:15px;min-height:52px;padding:0 10px}
+.prompt.intro .gname{font-size:30px}
+.codeline{text-align:center;font:400 16px/1 var(--mono);color:var(--furniture)}
+.codeline .k{color:var(--primary);font-weight:600}.codeline .n{color:var(--primary);font-weight:600}
+.lock{display:flex;align-items:flex-end;gap:10px;padding:10px}
+.wheel{width:76px;height:120px}
+.wheel::before{top:40px;height:40px}
+.wheel .wpad,.wpad{height:40px}
+.witem{height:40px;font-size:26px}
+.lockbtn{flex:1;min-height:120px;font-size:22px;letter-spacing:.1em;background:var(--primary);box-shadow:0 0 0 2px #3D6BFF,0 0 24px rgba(61,107,255,.6);border-color:var(--light)}
+.english{margin:0;font-size:14px}
+.closex{position:absolute;top:calc(var(--st) + 12px);right:var(--pad);width:44px;height:44px;border-radius:50%;border:2px solid var(--light);background:rgba(248,249,251,.08);color:var(--light);font:700 26px/1 var(--body);cursor:pointer;z-index:2}
+#results.coll{padding-top:calc(var(--st) + 16px)}
+.collgrid{max-width:min(440px, calc((100dvh - 280px) * .714 + 16px));gap:12px}
+#results .holo{width:min(40vw,190px,calc(24dvh * .714))}
+.howsheet > .btn{position:sticky;bottom:0;flex:none}
+.howsheet{gap:10px}
+.howcode{padding:10px 10px 2px}
+/* locked card label */
+.holo.locked b{font-size:10px;padding:0 6px;text-align:center;word-break:break-all}
+@media (max-height:820px){
+  .console{display:none!important}
+  .prompt p{font-size:16px}
+  .prompt.guidep p{font-size:15px}
+  .bestrow{margin-top:6px}
+}
+@media (max-height:720px){
+  .btn{min-height:48px;font-size:18px}
+  .choice.big{min-height:60px}.choice.big .c{font-size:24px}
+  .breakbtn{min-height:64px;font-size:32px}
+  .prompt.intro .gname{font-size:26px;margin-bottom:4px}
+  .prompt p{font-size:15px}
+  .wheel{height:120px}
+  .lockbtn{min-height:120px}
+  .howsteps li{font-size:15px}
+}
+
 @media (min-height:880px){ .prompt p{font-size:19px} }
 </style>
 </head>
@@ -361,7 +411,7 @@ code,.mono{font-family:var(--mono)}
 <!-- ===== play ===== -->
 <section id="play" class="screen grid-bg" hidden>
   <div class="bar">
-    <button class="iconbtn" id="rescan"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>Scan</button>
+    <button class="iconbtn" id="rescan" aria-label="Back"><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
     <div class="ttl"><span id="ttlConcept"></span><b id="ttlFile"></b></div>
     <div class="stamps" data-stamps></div>
   </div>

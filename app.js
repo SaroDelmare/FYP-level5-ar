@@ -626,11 +626,11 @@ function isGold(id) { return (BEST[id] || 0) >= (GOLD[id] || Infinity); }
 /* ---------- how to play: plain-English code walkthrough + steps, auto-opens the first time ---------- */
 const HOWTO = {
   broke: { title: 'CAUGHT?', code: [[3, 'if netflix.password_sharing_detected():', 'Netflix checks if you share passwords'], [4, '    raise BrokeError(…)', 'runs if it’s True: you’re caught'], [6, '    print("Still on my friend’s account.")', 'runs if it’s False: you’re safe']],
-    steps: ['Read what the check returns.', '<b>True</b> → tap <b>CAUGHT</b>. <b>False</b> → tap <b>SAFE</b>.', 'You start with 45 seconds. Right answers add 2s, wrong ones take 3s away.', 'It starts easy and gets harder.'] },
+    steps: ['Read what the check returns.', '<b>True</b> → tap <b>CAUGHT</b>. <b>False</b> → tap <b>SAFE</b>.', 'You start with 45 seconds (that’s also the max). Right answers add time, wrong ones take 3s away.', 'It starts easy and gets harder.'] },
   procrastination: { title: 'BREAK THE LOOP', code: [[3, 'while True:', 'repeats forever'], [8, '        time.sleep(30)', 'last line of the loop: break goes here']],
     steps: ['A dot runs round the loop, 3 → 8, over and over.', 'Tap <b>BREAK</b> when it hits <b>8</b>.', 'Miss and you lose a life. It speeds up after every break.'] },
   deadline: { title: 'THE DEADLINE', code: [[1, 'if days_left == 7:', '7 days left: always chill'], [4, 'elif days_left == 1:', 'this line picks which days you panic']],
-    steps: ['Each tile is a day, counting down from 7 days left.', 'The two wheels change line 4. The words under them say what it means.', 'Make <b>your</b> tiles match the <b>goal</b> tiles, then hold still to lock it.', 'You get 60 seconds. Every lock adds 5.'] },
+    steps: ['Each tile is a day, counting down from 7 days left.', 'The two wheels change line 4. The words under them say what it means.', 'When your tiles match the <b>goal</b>, tap <b>LOCK IN</b>.', 'Right: +3s. Wrong: −3s. You start with 60s.'] },
   lecture: { title: 'DO NOT DISTURB', code: [[3, 'try:', 'try to…'], [4, '    lecture.listen(minutes=5)', '…listen for 5 minutes'], [5, 'except AttentionSpanError:', 'lose focus and the phone comes out']],
     steps: ['<b>Hold</b> the button to listen.', '<b>Tap</b> notifications away with your other thumb.', '<b>Don’t</b> tap EXAM INFO.', 'Last until 5:00.'] },
   gears: { title: 'GEAR HELP', code: [],
@@ -657,8 +657,8 @@ function gameIntro(v, def) {
   v.ui.prompt.className = 'prompt intro';
   v.ui.prompt.innerHTML = `<div class="gname">${def.game}</div><p>${def.tagline}</p>
     <div class="bestrow"><span class="stars sm">${[0, 1, 2].map(i => `<i class="${i < st ? 'on' : ''}"></i>`).join('')}</span><span>${best ? `Best <b>${best.toLocaleString()}</b>` : 'No score yet'}</span><span class="next">${st < 3 ? `next ★ at ${def.stars[st].toLocaleString()}` : 'all stars'}</span></div>`;
-  v.ui.button(`${PLAY_ICON} Play`, () => { audioInit(); def.play(v); });
-  v.ui.button('How to play', () => { sfx.tap(); showHow(def.stamp); }, 'light howbtn');
+  const row = h('div', 'introrow'); const pb = h('button', 'btn', `${PLAY_ICON} Play`); pb.onclick = () => { audioInit(); def.play(v); };
+  const hb = h('button', 'btn light howbtn', 'How to play'); hb.onclick = () => { sfx.tap(); showHow(def.stamp); }; row.append(pb, hb); v.ui.el.appendChild(row);
   const g = GOLD[def.stamp]; if (g && (st >= 3 || isGold(def.stamp))) { const gl = h('p', 'goldline', isGold(def.stamp) ? '<b>GOLDEN CARD</b> unlocked' : `Secret: score <b>${g.toLocaleString()}</b> for a golden card`); v.ui.el.appendChild(gl); }
 }
 
@@ -803,6 +803,7 @@ function goldConfetti() {
 function showCollection() {
   const r = $('results'); r.innerHTML = ''; r.hidden = false; r.className = 'screen coll';
   const golds = STAMP_IDS.filter(id => stamps.has(id) && isGold(id)).length;
+  const x = h('button', 'closex', '×'); x.setAttribute('aria-label', 'Close'); x.onclick = () => { sfx.tap(); r.hidden = true; }; r.appendChild(x);
   r.appendChild(h('div', 'rbox', `<p class="eyebrow">Your collection</p><div class="gname" style="color:var(--light)">${stamps.size} OF 4 CARDS</div>${golds ? `<p class="goldline" style="color:#F2C94C">${golds} golden</p>` : ''}`));
   const grid = h('div', 'collgrid'); r.appendChild(grid);
   STAMP_IDS.forEach(id => {
@@ -844,15 +845,45 @@ async function saveCollection(btn) {
    CARD 0 · broke.py · "CAUGHT?"  reaction quiz, endless, harder expressions as you go
    ===================================================================== */
 const CARDS = [];
-const EXPR = [
+const EXPR_OLD = [
   [['True', 1], ['False', 0]],
   [['not True', 0], ['not False', 1], ['True', 1], ['False', 0]],
   [['True and False', 0], ['True or False', 1], ['False or False', 0], ['True and True', 1], ['not False', 1]],
   [['7 > 3', 1], ['1 == 2', 0], ['5 >= 5', 1], ['not (1 == 2)', 1], ['3 != 3', 0], ['"" == ""', 1], ['len("netflix") == 7', 1], ['2 + 2 == 5', 0]],
 ];
+/* questions are generated, so there's always something new: [text, value] */
+const ri = (a, b) => a + ((Math.random() * (b - a + 1)) | 0), pick = arr => arr[(Math.random() * arr.length) | 0], B = () => Math.random() < .5;
+const WORDS = ['netflix', 'wifi', 'cloud', 'python', 'nyp', 'level5', 'binge', 'server', 'loop', 'deadline'];
+const pyB = b => b ? 'True' : 'False';
+function genExpr(t) {
+  if (t === 0) { const b = B(); return [pyB(b), b]; }
+  if (t === 1) {
+    const k = ri(0, 3);
+    if (k === 0) { const b = B(); return [`not ${pyB(b)}`, !b]; }
+    if (k === 1) { const b = B(); return [`not not ${pyB(b)}`, b]; }
+    const x = ri(1, 9), y = B() ? x : ri(1, 9);
+    return k === 2 ? [`${x} == ${y}`, x === y] : [`${x} != ${y}`, x !== y];
+  }
+  if (t === 2) {
+    const p = B(), q = B(), k = ri(0, 4);
+    if (k === 0) return [`${pyB(p)} and ${pyB(q)}`, p && q];
+    if (k === 1) return [`${pyB(p)} or ${pyB(q)}`, p || q];
+    if (k === 2) return [`not ${pyB(p)} and ${pyB(q)}`, !p && q];
+    if (k === 3) return [`${pyB(p)} or not ${pyB(q)}`, p || !q];
+    const x = ri(1, 9), y = ri(1, 9); return [`${x} > ${y} and ${pyB(q)}`, x > y && q];
+  }
+  const k = ri(0, 6), x = ri(1, 12), y = ri(1, 12);
+  if (k === 0) { const s2 = x + y, z = B() ? s2 : s2 + pick([-2, -1, 1, 2]); return [`${x} + ${y} == ${z}`, s2 === z]; }
+  if (k === 1) { const z = ri(10, 60); return [`${x} * ${y} > ${z}`, x * y > z]; }
+  if (k === 2) return [`${x} % 2 == 0`, x % 2 === 0];
+  if (k === 3) { const w = pick(WORDS), n = B() ? w.length : w.length + pick([-1, 1]); return [`len("${w}") == ${n}`, w.length === n]; }
+  if (k === 4) { const z = ri(1, 12), u = ri(1, 12); return [`${x} >= ${y} or ${z} < ${u}`, x >= y || z < u]; }
+  if (k === 5) return [`not (${x} <= ${y})`, !(x <= y)];
+  const z = ri(1, 12); return [`${x} < ${y} < ${z}`, x < y && y < z];
+}
 CARDS[0] = {
   file: 'broke.py', concept: 'if / else', stamp: 'broke', dark: true,
-  game: 'CAUGHT?', tagline: 'The check returns something. <b>True → CAUGHT, False → SAFE.</b> You start with 45s: +2s if right, −3s if wrong.',
+  game: 'CAUGHT?', tagline: 'The check returns something. <b>True → CAUGHT, False → SAFE.</b> Right answers add time, wrong ones cost 3s.',
   stars: [1500, 4000, 8000],
   init(v) { v.fx = makeFX(); v.s = { phase: 'intro', score: 0, combo: 0, lives: 3, n: 0, right: 0, coins: 0, flip: 0 }; },
   start(v) { v.tr.hl(3); gameIntro(v, this); if (!seenHow(this.stamp)) showHow(this.stamp); },
@@ -873,7 +904,7 @@ CARDS[0] = {
       // stages: easy → medium → harder → hard → mix (60 hard / 30 medium / 10 easy) → hard only
       const q = s.right + s.wrong, r = Math.random();
       const t = q < 5 ? 0 : q < 10 ? 1 : q < 15 ? 2 : q < 22 ? 3 : q < 32 ? (r < .6 ? 3 : r < .9 ? (Math.random() < .5 ? 1 : 2) : 0) : 3;
-      const pool = EXPR[t].filter(x => x[0] !== s.expr); e = pool[(Math.random() * pool.length) | 0]; s.tier = t;
+      let tries = 0; do { e = genExpr(t); tries++; } while (e[0] === s.expr && tries < 20); s.tier = t;
     }
     s.expr = e[0]; s.val = !!e[1]; if (s.practice) s.tier = 0; s.flip = 0; s.phase = 'q'; s.n++;
     v.btns.forEach(b => b.classList.remove('guide', 'dim'));
@@ -890,7 +921,7 @@ CARDS[0] = {
     v.btns.forEach(b => { const n = +b.querySelector('.n').textContent; if (n === correct) b.classList.add('right'); else if (n === line) b.classList.add('wrong'); });
     if (ok) {
       s.combo++; if (!s.practice) s.right++; const pts = s.practice ? 0 : Math.round(60 * Math.min(3, 1 + (s.combo - 1) * .25) * (1 + s.tier * .25)); s.score += pts;
-      const qn = s.right + s.wrong, gain = s.practice ? 0 : qn < 25 ? 2 : qn < 40 ? 1.5 : 1; s.clock += gain; if (gain) v.fx.pop(850, 120, `+${gain}s`, COL.p40, 40);
+      const qn = s.right + s.wrong, gain = s.practice ? 0 : qn < 15 ? 2 : qn < 30 ? 1.5 : 1; const before = s.clock; s.clock = Math.min(45, s.clock + gain); if (gain) v.fx.pop(850, 120, s.clock - before > 0 ? `+${(s.clock - before).toFixed(1).replace('.0', '')}s` : 'MAX 45s', COL.p40, 40);
       if (pts) v.fx.pop(500, 200, '+' + pts, COL.light, 64); v.fx.burst(500, 240, 26, [COL.light, NEON, COL.p40], 620, 12); v.fx.ring(500, 240);
       if (s.combo % 5 === 0) { v.fx.pop(500, 120, `${s.combo} IN A ROW!`, COL.p40, 50); sfx.win(); } else sfx.ok();
       s.coins = 1; v.out(s.val ? 'BrokeError: Goodbye, food budget.' : 'Still on my friend\'s account.', s.val ? 'err' : null);
@@ -1048,27 +1079,28 @@ const englishOf = (op, n) => ({
   '<=': `panic when ${n} or fewer days are left`,
   '>': `panic when more than ${n} days are left`,
   '>=': `panic when ${n} or more days are left` })[op];
-const GOAL_OPS = s => s.solved < 3 ? ['<=', '=='] : s.solved < 6 ? ['<=', '==', '>=', '<'] : OPS;   // easy comparisons first
+const GOAL_OPS = s => s.solved < 2 ? ['<=', '==', '>='] : OPS;
 CARDS[2] = {
   file: 'deadline.py', concept: 'if / elif', stamp: 'deadline', dark: true, noConsole: true,
-  game: 'THE DEADLINE', tagline: 'Line 4 decides which days you panic. <b>Spin the wheels</b> until your week matches the goal.',
+  game: 'THE DEADLINE', tagline: 'Line 4 decides which days you panic. <b>Spin the wheels</b> to match the goal, then <b>LOCK IN</b>.',
   stars: [400, 1000, 2000],
   init(v) { v.fx = makeFX(); v.s = { phase: 'intro', op: '==', n: 1, week: weekOf('==', 1), flips: Array(7).fill(1), time: 60, score: 0, solved: 0, goal: null }; },
   start(v) { gameIntro(v, this); if (!seenHow(this.stamp)) showHow(this.stamp); },
   play(v) {
     const s = v.s; Object.assign(s, { phase: 'run', time: 60, score: 0, solved: 0, roundT: 0, demo: DEMO.has('deadline') ? 0 : 1, op: '==', n: 1, week: weekOf('==', 1) }); v.clearOut(); v.tr.reset();
     v.ui.clear(); v.ui.prompt.className = 'prompt'; v.ui.prompt.innerHTML = '';
-    const lock = h('div', 'lock');
     const col = (lab, wh) => { const d = h('div', 'wcol'); d.appendChild(h('span', 'wlab', lab)); d.appendChild(wh); return d; };
     v.w1 = this.wheel(OPS, 0, i => this.set(v, OPS[i], s.n)); v.w2 = this.wheel([0, 1, 2, 3, 4, 5, 6, 7], 1, i => this.set(v, s.op, i));
-    lock.append(h('span', 'kw', 'elif'), h('span', 'lv', 'days_left'), col('compare', v.w1), col('number', v.w2), h('span', 'lv', ':'));
-    v.eng = h('p', 'english'); v.ui.el.append(lock, v.eng);
+    v.codeLine = h('div', 'codeline');
+    const lock = h('div', 'lock'); const lb = h('button', 'btn lockbtn', 'LOCK IN'); lb.onclick = () => { audioInit(); this.tryLock(v); }; v.lockBtn = lb;
+    lock.append(col('compare', v.w1), col('number', v.w2), lb);
+    v.eng = h('p', 'english'); v.ui.el.append(v.codeLine, lock, v.eng);
     this.newGoal(v); this.set(v, s.op, s.n, true); this.demoUI(v);
   },
   wheel(items, start, cb) {
     const w = h('div', 'wheel'), list = h('div', 'wlist'); w.appendChild(list);
     list.appendChild(h('div', 'wpad')); items.forEach(it => list.appendChild(h('div', 'witem', String(it)))); list.appendChild(h('div', 'wpad'));
-    let cur = start; const IH = 52;
+    let cur = start; const IH = 40;
     const mark = () => [...list.querySelectorAll('.witem')].forEach((e, i) => e.classList.toggle('on', i === cur));
     requestAnimationFrame(() => { list.scrollTop = start * IH; mark(); });
     list.addEventListener('scroll', () => { if (w.classList.contains('off')) return; wheelMoved = performance.now(); const i = clamp(Math.round(list.scrollTop / IH), 0, items.length - 1); if (i !== cur) { cur = i; mark(); blip(1500, .012, 'square', .02); buzz(5); cb(i); } }, { passive: true });
@@ -1082,15 +1114,15 @@ CARDS[2] = {
     v.w1.lock(s.demo === 1); v.w2.lock(s.demo === 2); v.w1.hint(s.demo === 2); v.w2.hint(s.demo === 1);
     if (!s.demo) { p.className = 'prompt'; p.innerHTML = ''; return; }
     p.className = 'prompt guidep';
-    p.innerHTML = s.demo === 1 ? `<p class="eyebrow">Demo 1 of 2</p><p>Spin <b>number</b> to <b>3</b>: you’ll panic with exactly 3 days left.</p>`
-      : `<p class="eyebrow">Demo 2 of 2</p><p>Spin <b>compare</b> to <b>&lt;=</b>: “3 or fewer” days left.</p>`;
+    p.innerHTML = s.demo === 1 ? `<p><b>Demo 1/2</b> · Spin <b>number</b> to <b>3</b>, then tap <b>LOCK IN</b>.</p>`
+      : `<p><b>Demo 2/2</b> · Spin <b>compare</b> to <b>&lt;=</b> (“3 or fewer”), then <b>LOCK IN</b>.</p>`;
   },
   newGoal(v) {
     const s = v.s; let op, n, w, tries = 0; s.match = false; s.lockT = 0; s.roundT = 0; s.goalIn = 0;
     if (s.demo === 1) { s.goal = { w: weekOf('==', 3), text: 'Panic only with 3 days left' }; return; }
     if (s.demo === 2) { s.goal = { w: weekOf('<=', 3), text: 'Start panicking with 3 days left' }; return; }
     const ops = GOAL_OPS(s);
-    do { op = ops[(Math.random() * ops.length) | 0]; n = 1 + ((Math.random() * 6) | 0); w = weekOf(op, n); tries++; } while ((w === s.week || w === (s.goal && s.goal.w) || describeWeek(w) === 'Match this week' || !w.includes('P')) && tries < 80);
+    do { op = ops[(Math.random() * ops.length) | 0]; n = (Math.random() * 8) | 0; w = weekOf(op, n); tries++; } while ((w === s.week || w === (s.goal && s.goal.w) || describeWeek(w) === 'Match this week' || !w.includes('P')) && tries < 80);
     s.goal = { w, text: describeWeek(w) };
   },
   set(v, op, n, silent) {
@@ -1099,7 +1131,14 @@ CARDS[2] = {
     s.week = w;
     v.tr.patch(4, [['elif', C.kw], [' days_left ', C.txt], [op, C.txt], [' ', C.txt], [String(n), C.str], [':', C.txt]], !silent);
     if (v.eng) v.eng.innerHTML = `= <b>${englishOf(op, n)}</b>`;
-    s.match = s.phase === 'run' && s.goal && w === s.goal.w; if (!s.match) s.lockT = 0;
+    if (v.codeLine) v.codeLine.innerHTML = `<span class="k">elif</span> days_left ${op.replace('<', '&lt;')} <span class="n">${n}</span>:`;
+  },
+  tryLock(v) {
+    const s = v.s; if (s.phase !== 'run') return;
+    if (s.week === s.goal.w) { this.solve(v); return; }
+    s.wrongT = 1.1; v.fx.hit(.8); sfx.err();
+    if (s.demo) { v.fx.pop(500, 500, 'NOT YET', COL.p40, 50); return; }
+    s.time = Math.max(0, s.time - 3); v.fx.pop(500, 500, 'NOT YET  −3s', COL.p40, 50); v.out(`elif days_left ${s.op} ${s.n}: doesn't match`, 'sys');
   },
   solve(v) {
     const s = v.s;
@@ -1108,15 +1147,15 @@ CARDS[2] = {
       if (s.demo === 1) { s.demo = 2; v.out('demo: elif days_left == 3', 'ok'); s.phase = 'cracked'; s.ct = 0; s.nextDemo = true; return; }
       s.demo = 0; DEMO.add('deadline'); s.time = 60; v.fx.pop(500, 230, 'NOW FOR REAL', COL.light, 64); sfx.win(); v.out('demo done. 60 seconds, go', 'ok'); s.phase = 'cracked'; s.ct = 0; this.demoUI(v); return;
     }
-    s.solved++; const bonus = Math.max(0, Math.round(250 - s.roundT * 30)); const pts = 100 + bonus; s.score += pts; s.time += 5;
-    v.fx.pop(500, 230, '+' + pts, COL.light, 70); v.fx.pop(500, 300, '+5s', COL.p40, 40); v.fx.burst(500, 440, 50, [COL.light, NEON, COL.p40], 760, 12); v.fx.ring(500, 440, COL.light, 30, 420); v.fx.flashIt(COL.light, .7);
+    s.solved++; const bonus = Math.max(0, Math.round(250 - s.roundT * 30)); const pts = 100 + bonus; s.score += pts; s.time += 3;
+    v.fx.pop(500, 230, '+' + pts, COL.light, 70); v.fx.pop(500, 300, '+3s', COL.p40, 40); v.fx.burst(500, 440, 50, [COL.light, NEON, COL.p40], 760, 12); v.fx.ring(500, 440, COL.light, 30, 420); v.fx.flashIt(COL.light, .7);
     sfx.win(); buzz([15, 30, 15]); v.out(`locked: elif days_left ${s.op} ${s.n}`, 'ok');
     s.phase = 'cracked'; s.ct = 0;
   },
   update(v, dt) {
     const s = v.s, k = dt / 1000; v.fx.update(dt); s.goalIn = Math.min(1, (s.goalIn || 0) + k * 3);
     for (let i = 0; i < 7; i++) if (s.flips[i] < 1) { const before = s.flips[i]; s.flips[i] = Math.min(1, s.flips[i] + k * (5 - i * .25)); if (before < .5 && s.flips[i] >= .5) blip(400 + i * 40, .02, 'square', .02); }
-    if (s.phase === 'run' && s.match) { if (performance.now() - wheelMoved > 140) { s.lockT += k; if (s.lockT >= (s.demo ? .35 : LOCK_IN)) this.solve(v); } else s.lockT = 0; }
+    s.wrongT = Math.max(0, (s.wrongT || 0) - k);
     if ((s.phase === 'run' || s.phase === 'cracked') && !s.demo) { s.time -= k; s.roundT += k; }
     if (s.phase === 'run' || s.phase === 'cracked') { if (s.time <= 0) { s.time = 0; s.phase = 'over'; v.ui.clear(); sfx.no(); setTimeout(() => { gameIntro(v, this); showResults(v, this, s.score, [`${s.solved} locked`]); }, 500); } }
     if (s.phase === 'cracked') { s.ct += k; if (s.ct > .8) { s.phase = 'run'; if (s.nextDemo) { s.nextDemo = false; this.demoUI(v); } this.newGoal(v); this.set(v, s.op, s.n, true); } }
@@ -1137,10 +1176,9 @@ CARDS[2] = {
       txt(c, 'GOAL', 28, 222, `600 24px ${F.m}`, COL.p60);
       for (let i = 0; i < 7; i++) this.tile(c, X(i), 186, i, s.goal.w[i], 1, 74, true);
       txt(c, 'YOU', 28, 352, `600 24px ${F.m}`, COL.light);
-      for (let i = 0; i < 7; i++) { const ok = s.week[i] === s.goal.w[i]; this.tile(c, X(i), 290, i, s.week[i], s.flips[i], 104, false, ok);
-        if (!ok && s.phase === 'run') { circle(c, X(i) + 40, 292, 15, COL.light); txt(c, '×', X(i) + 40, 294, `700 28px ${F.b}`, COL.ink, 'center', 'middle'); } }
-      if (s.match && s.phase === 'run') { const q = clamp(s.lockT / (s.demo ? .35 : LOCK_IN), 0, 1); fillRR(c, 60, 440, 880, 18, 9, 'rgba(248,249,251,.12)'); glow(c, COL.light, 20); fillRR(c, 60, 440, Math.max(18, 880 * q), 18, 9, COL.light); noGlow(c); txt(c, 'MATCH! HOLD STILL TO LOCK IT IN', 500, 506, `700 36px ${F.d}`, COL.light, 'center'); }
-      else if (s.phase === 'run') txt(c, 'Fix the days marked ×', 500, 480, `600 28px ${F.m}`, 'rgba(248,249,251,.5)', 'center');
+      for (let i = 0; i < 7; i++) { const ok = s.week[i] === s.goal.w[i]; this.tile(c, X(i), 290, i, s.week[i], s.flips[i], 104, false, false);
+        if (!ok && s.wrongT > 0) { c.globalAlpha = Math.min(1, s.wrongT * 2); circle(c, X(i) + 40, 292, 15, COL.light); txt(c, '×', X(i) + 40, 294, `700 28px ${F.b}`, COL.ink, 'center', 'middle'); c.globalAlpha = 1; } }
+      if (s.phase === 'run' && !s.wrongT) txt(c, 'Think it matches? Tap LOCK IN. Wrong costs 3s.', 500, 470, `600 26px ${F.m}`, 'rgba(248,249,251,.45)', 'center');
       if (s.phase === 'cracked') { const q = back(clamp(s.ct * 4, 0, 1)); c.save(); c.translate(500, 360); c.scale(q, q); c.rotate(-.08); fillRR(c, -210, -54, 420, 108, 20, COL.light); glow(c, NEON, 30); txt(c, 'LOCKED', 0, 22, `700 80px ${F.d}`, COL.primary, 'center'); c.restore(); noGlow(c); }
     }
     v.fx.draw(c); c.restore();
@@ -1186,7 +1224,7 @@ CARDS[3] = {
     b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('contextmenu', e => e.preventDefault());
   },
   demoNote(v, kind) {
-    const s = v.s, w = 340, hh = 88; s.notes = [{ x: 330, y: 220, w, h: hh, app: kind === 4 ? 'EXAM INFO' : 'group chat', kind, t: 0 }]; kind === 4 ? blip(300, .15, 'sine', .04) : sfx.ping();
+    const s = v.s, w = 400, hh = 104; s.notes = [{ x: 300, y: 220, w, h: hh, app: kind === 4 ? 'EXAM INFO' : 'group chat', kind, t: 0 }]; kind === 4 ? blip(300, .15, 'sine', .04) : sfx.ping();
   },
   demoSay(v) {
     const s = v.s, p = v.ui.prompt; if (!s.demo) { p.className = 'prompt'; p.innerHTML = ''; return; }
@@ -1241,7 +1279,7 @@ CARDS[3] = {
       s.nextNote -= k;
       if (s.nextNote <= 0 && s.shield <= 0) {
         const kind = NOTE_KIND(s.idx++), pool = APPS.filter(a2 => a2[1] === kind), app = pool[s.idx % pool.length][0];
-        const w = kind === 2 ? 420 : 340, hh = kind === 2 ? 110 : 88;
+        const w = kind === 2 ? 470 : 400, hh = kind === 2 ? 124 : 104;
         const yTop = 140 - v.oy, yBot = (v.DH || 560) - v.oy - hh - 24; let x, y, tries = 0; do { x = rand(30, 1000 - w - 30); y = rand(yTop, Math.max(yTop + 10, yBot)); tries++; } while (tries < 20 && s.notes.some(n => x < n.x + n.w + 10 && x + w + 10 > n.x && y < n.y + n.h + 10 && y + hh + 10 > n.y));
         s.notes.push({ x, y, w, h: hh, app, kind, t: 0 });
         s.nextNote = Math.max(.38, 1.0 - s.sec / 420); kind === 2 ? (blip(520, .2, 'sine', .05), blip(660, .2, 'sine', .05, .2)) : kind === 4 ? blip(300, .15, 'sine', .04) : sfx.ping();
@@ -1270,10 +1308,10 @@ CARDS[3] = {
         c.save(); c.translate(n.x + n.w / 2 + wob, n.y + n.h / 2); c.scale(k, k); if (mum) c.rotate(Math.sin(n.t * 30) * .03); c.translate(-n.w / 2, -n.h / 2);
         const exam = n.kind === 4; if (exam) c.globalAlpha = clamp((1.9 - n.t) * 2, 0, 1);
         glow(c, gold ? COL.light : NEON, gold ? 40 : exam ? 0 : 22); fillRR(c, 0, 0, n.w, n.h, 22, gold ? COL.light : mum ? COL.primary : exam ? COL.ink : '#18234A'); noGlow(c);
-        if (exam) { c.setLineDash([12, 8]); strokeRR(c, 0, 0, n.w, n.h, 22, COL.light, 4); c.setLineDash([]); txt(c, '!', 44, n.h / 2 + 14, `700 40px ${F.d}`, COL.light, 'center'); txt(c, 'EXAM INFO', 82, n.h / 2 - 2, `700 30px ${F.b}`, COL.light); txt(c, 'don’t swat', 82, n.h / 2 + 28, `600 22px ${F.m}`, COL.p40); c.restore(); c.globalAlpha = 1; return; }
+        if (exam) { c.setLineDash([12, 8]); strokeRR(c, 0, 0, n.w, n.h, 22, COL.light, 4); c.setLineDash([]); txt(c, '!', 44, n.h / 2 + 14, `700 40px ${F.d}`, COL.light, 'center'); txt(c, 'EXAM INFO', 86, n.h / 2 - 2, `700 38px ${F.b}`, COL.light); txt(c, 'don’t swat', 86, n.h / 2 + 32, `600 26px ${F.m}`, COL.p40); c.restore(); c.globalAlpha = 1; return; }
         strokeRR(c, 0, 0, n.w, n.h, 22, gold ? NEON : COL.p40, 3);
         circle(c, 44, n.h / 2, 24, gold ? COL.primary : mum ? COL.light : NEON);
-        txt(c, n.app, 82, n.h / 2 + 11, `700 ${mum ? 36 : 30}px ${F.b}`, gold ? COL.primary : COL.light);
+        txt(c, n.app, 86, n.h / 2 + 13, `700 ${mum ? 42 : 38}px ${F.b}`, gold ? COL.primary : COL.light);
         if (gold) { const g2 = 1 - (n.t / 2.2); fillRR(c, 16, n.h - 10, (n.w - 32) * g2, 5, 2, COL.primary); }
         c.restore();
       });
@@ -1395,8 +1433,8 @@ function makeGearView(target) {
     else pr.innerHTML = `<p class="eyebrow">Answer</p><p>${change.map(x => `${x.in ? 'push in' : 'pull out'} <b>${LABEL[x.g]}</b>`).join(' · ')}.<br><span style="color:var(--g75);font-size:15px">Lost? Pull everything out, then push in ${c.fresh.map(x => LABEL[x]).join(', ')}.</span></p>`;
     const hints = h('div', 'hints'); p.appendChild(hints);
     [['Hint', 1], ['Answer', 2]].forEach(([lab, lvl]) => {
-      const b = h('button', 'btn ' + (v.hint === lvl ? '' : 'light'), lab);
-      b.onclick = () => { audioInit(); sfx.tap(); v.hint = lvl; v.ins = new Set(lvl === 2 ? c.answer : prev ? prev.answer : []); v.hl = new Set(change.map(x => x.g)); if (lvl === 2) sfx.clunk(); sync(); };
+      const b = h('button', 'btn ' + (v.hint === lvl ? '' : 'light'), lvl === 2 && v.hint === 2 ? 'Hide answer' : lab);
+      b.onclick = () => { audioInit(); sfx.tap(); if (lvl === 2 && v.hint === 2) { v.hint = 0; v.ins = new Set(prev ? prev.answer : []); v.hl.clear(); sync(); return; } v.hint = lvl; v.ins = new Set(lvl === 2 ? c.answer : prev ? prev.answer : []); v.hl = new Set(change.map(x => x.g)); if (lvl === 2) sfx.clunk(); sync(); };
       hints.appendChild(b);
     });
   }
