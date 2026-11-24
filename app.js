@@ -1147,7 +1147,7 @@ CARDS[2] = {
     if (s.demo) {
       v.fx.flashIt(COL.light, .6); sfx.ok(); v.fx.burst(500, 440, 30, [COL.light, NEON], 600, 10);
       if (s.demo === 1) { s.demo = 2; v.out('demo: elif days_left == 3', 'ok'); s.phase = 'cracked'; s.ct = 0; s.nextDemo = true; return; }
-      s.demo = 0; DEMO.add('deadline'); s.time = 60; v.fx.pop(500, 230, 'NOW FOR REAL', COL.light, 64); sfx.win(); v.out('demo done. 60 seconds, go', 'ok'); s.phase = 'cracked'; s.ct = 0; this.demoUI(v); return;
+      s.demo = 0; DEMO.add('deadline'); s.time = 60; $('playBody').scrollTo({ top: 0, behavior: 'smooth' }); v.fx.pop(500, 230, 'NOW FOR REAL', COL.light, 64); sfx.win(); v.out('demo done. 60 seconds, go', 'ok'); s.phase = 'cracked'; s.ct = 0; this.demoUI(v); return;
     }
     s.solved++; const bonus = Math.max(0, Math.round(250 - s.roundT * 30)); const pts = 100 + bonus; s.score += pts; s.time += 3;
     v.fx.pop(500, 230, '+' + pts, COL.light, 70); v.fx.pop(500, 300, '+3s', COL.p40, 40); v.fx.burst(500, 440, 50, [COL.light, NEON, COL.p40], 760, 12); v.fx.ring(500, 440, COL.light, 30, 420); v.fx.flashIt(COL.light, .7);
