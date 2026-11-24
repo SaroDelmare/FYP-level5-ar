@@ -630,7 +630,7 @@ const HOWTO = {
   procrastination: { title: 'BREAK THE LOOP', code: [[3, 'while True:', 'repeats forever'], [8, '        time.sleep(30)', 'last line of the loop: break goes here']],
     steps: ['A dot runs round the loop, 3 → 8, over and over.', 'Tap <b>BREAK</b> when it hits <b>8</b>.', 'Miss and you lose a life. It speeds up after every break.'] },
   deadline: { title: 'THE DEADLINE', code: [[1, 'if days_left == 7:', '7 days left: always chill'], [4, 'elif days_left == 1:', 'this line picks which days you panic']],
-    steps: ['Each tile is a day, counting down from 7 days left.', 'The two wheels change line 4. The words under them say what it means.', 'When your tiles match the <b>goal</b>, tap <b>LOCK IN</b>.', 'Right: +3s. Wrong: −3s. You start with 60s.'] },
+    steps: ['Each tile is a day, counting down from 7 days left.', 'Spin the two wheels (or tap above / below) to change line 4. The words underneath say what it means.', 'When your tiles match the <b>goal</b>, tap <b>LOCK IN</b>.', 'Right: +3s. Wrong: −3s. You start with 60s.'] },
   lecture: { title: 'DO NOT DISTURB', code: [[3, 'try:', 'try to…'], [4, '    lecture.listen(minutes=5)', '…listen for 5 minutes'], [5, 'except AttentionSpanError:', 'lose focus and the phone comes out']],
     steps: ['<b>Hold</b> the button to listen.', '<b>Tap</b> notifications away with your other thumb.', '<b>Don’t</b> tap EXAM INFO.', 'Last until 5:00.'] },
   gears: { title: 'GEAR HELP', code: [],
@@ -920,7 +920,7 @@ CARDS[0] = {
     v.tr.chip(3, s.val ? 'True' : 'False'); v.tr.hl(correct);
     v.btns.forEach(b => { const n = +b.querySelector('.n').textContent; if (n === correct) b.classList.add('right'); else if (n === line) b.classList.add('wrong'); });
     if (ok) {
-      s.combo++; if (!s.practice) s.right++; const pts = s.practice ? 0 : Math.round(60 * Math.min(3, 1 + (s.combo - 1) * .25) * (1 + s.tier * .25)); s.score += pts;
+      s.combo++; if (!s.practice) s.right++; const pts = s.practice ? 0 : Math.round([40, 80, 130, 200][s.tier] * Math.min(3, 1 + (s.combo - 1) * .25)); s.score += pts;
       const qn = s.right + s.wrong, gain = s.practice ? 0 : qn < 15 ? 2 : qn < 30 ? 1.5 : 1; const before = s.clock; s.clock = Math.min(45, s.clock + gain); if (gain) v.fx.pop(850, 120, s.clock - before > 0 ? `+${(s.clock - before).toFixed(1).replace('.0', '')}s` : 'MAX 45s', COL.p40, 40);
       if (pts) v.fx.pop(500, 200, '+' + pts, COL.light, 64); v.fx.burst(500, 240, 26, [COL.light, NEON, COL.p40], 620, 12); v.fx.ring(500, 240);
       if (s.combo % 5 === 0) { v.fx.pop(500, 120, `${s.combo} IN A ROW!`, COL.p40, 50); sfx.win(); } else sfx.ok();
@@ -1092,7 +1092,7 @@ CARDS[2] = {
     const col = (lab, wh) => { const d = h('div', 'wcol'); d.appendChild(h('span', 'wlab', lab)); d.appendChild(wh); return d; };
     v.w1 = this.wheel(OPS, 0, i => this.set(v, OPS[i], s.n)); v.w2 = this.wheel([0, 1, 2, 3, 4, 5, 6, 7], 1, i => this.set(v, s.op, i));
     v.codeLine = h('div', 'codeline');
-    const lock = h('div', 'lock'); const lb = h('button', 'btn lockbtn', 'LOCK IN'); lb.onclick = () => { audioInit(); this.tryLock(v); }; v.lockBtn = lb;
+    const lock = h('div', 'lock'); const lb = h('button', 'btn lockbtn', 'LOCK<br>IN'); lb.onclick = () => { audioInit(); this.tryLock(v); }; v.lockBtn = lb;
     lock.append(col('compare', v.w1), col('number', v.w2), lb);
     v.eng = h('p', 'english'); v.ui.el.append(v.codeLine, lock, v.eng);
     this.newGoal(v); this.set(v, s.op, s.n, true); this.demoUI(v);
@@ -1100,11 +1100,13 @@ CARDS[2] = {
   wheel(items, start, cb) {
     const w = h('div', 'wheel'), list = h('div', 'wlist'); w.appendChild(list);
     list.appendChild(h('div', 'wpad')); items.forEach(it => list.appendChild(h('div', 'witem', String(it)))); list.appendChild(h('div', 'wpad'));
-    let cur = start; const IH = 40;
+    let cur = start; const IH = 50;
     const mark = () => [...list.querySelectorAll('.witem')].forEach((e, i) => e.classList.toggle('on', i === cur));
     requestAnimationFrame(() => { list.scrollTop = start * IH; mark(); });
     list.addEventListener('scroll', () => { if (w.classList.contains('off')) return; wheelMoved = performance.now(); const i = clamp(Math.round(list.scrollTop / IH), 0, items.length - 1); if (i !== cur) { cur = i; mark(); blip(1500, .012, 'square', .02); buzz(5); cb(i); } }, { passive: true });
     w.setIndex = i => { cur = i; list.scrollTop = i * IH; mark(); };
+    // fat-thumb friendly: tap the top half to go up one, bottom half to go down one
+    w.addEventListener('click', e => { if (w.classList.contains('off')) return; const r = w.getBoundingClientRect(), y = e.clientY - r.top; const d = y < r.height / 3 ? -1 : y > r.height * 2 / 3 ? 1 : 0; if (!d) return; const i = clamp(cur + d, 0, items.length - 1); if (i === cur) return; list.scrollTo({ top: i * IH, behavior: 'smooth' }); });
     w.lock = on => { w.classList.toggle('off', !!on); list.style.overflowY = on ? 'hidden' : 'scroll'; };
     w.hint = on => w.classList.toggle('hintw', !!on);
     return w;

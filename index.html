@@ -349,6 +349,14 @@ code,.mono{font-family:var(--mono)}
 .howcode{padding:10px 10px 2px}
 /* locked card label */
 .holo.locked b{font-size:10px;padding:0 6px;text-align:center;word-break:break-all}
+/* v8: bigger wheels, slimmer lock button, no empty prompt box */
+.prompt:empty{display:none}
+.wheel{width:96px;height:150px}
+.wheel::before{top:50px;height:50px}
+.wheel .wpad,.wpad{height:50px}
+.witem{height:50px;font-size:30px}
+.lockbtn{flex:0 1 120px;min-height:150px;font-size:20px;letter-spacing:.06em;padding:0 8px;line-height:1.1}
+.lock{justify-content:center}
 @media (max-height:820px){
   .console{display:none!important}
   .prompt p{font-size:16px}
@@ -361,8 +369,8 @@ code,.mono{font-family:var(--mono)}
   .breakbtn{min-height:64px;font-size:32px}
   .prompt.intro .gname{font-size:26px;margin-bottom:4px}
   .prompt p{font-size:15px}
-  .wheel{height:120px}
-  .lockbtn{min-height:120px}
+  .wheel{height:150px}
+  .lockbtn{min-height:150px}
   .howsteps li{font-size:15px}
 }
 
