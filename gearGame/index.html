@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#D5DEFB">
+<title>Can You Make It Spin? · Level 5</title>
+<style>
+@font-face{font-family:Figtree;font-weight:400 500;src:url(../fonts/figtree-latin-400-normal.woff) format('woff')}
+@font-face{font-family:Figtree;font-weight:600 700;src:url(../fonts/figtree-latin-700-normal.woff) format('woff')}
+@font-face{font-family:'Source Code Pro';font-weight:400 500;src:url(../fonts/source-code-pro-latin-400-normal.woff) format('woff')}
+@font-face{font-family:'Source Code Pro';font-weight:600 700;src:url(../fonts/source-code-pro-latin-600-normal.woff) format('woff')}
+@font-face{font-family:Barlow;font-weight:600 800;src:url(../fonts/barlow-latin-700-normal.woff) format('woff')}
+</style>
+<style>
+/* Digital twin of the Level 5 gear wall: same board, same 6 challenges, same 7-colour system. */
+:root{
+  /* the 7 colours */
+  --neutral:#EEF0F2; --primary:#1E55FF; --accent:#1D47B8; --ink:#15181D; --light:#F8F9FB; --furniture:#3E4451; --wall:#2A2E37;
+  /* tints of those 7 (same rules as the wall files) */
+  --p08:#E7ECFB; --p12:#DEE5FB; --p16:#D5DFFC; --p40:#A1B7FD;
+  --g12:#E2E3E7; --g35:#B7BAC0; --g75:#6C717C; --soft:#CACCD0; --edge:#545A65; --grid:#31353E;
+  --display:'Barlow','Arial Narrow',Arial,sans-serif;
+  --body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'Source Code Pro',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light; --sky:#D5DEFB;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{background:var(--sky);color:var(--ink)}
+body{font-family:var(--body);font-size:16px;line-height:1.45;margin:0;min-height:100vh;
+  background-image:linear-gradient(#E6ECFD 1px,transparent 1px),linear-gradient(90deg,#E6ECFD 1px,transparent 1px);background-size:40px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{text-align:center}
+.eyebrow{font-family:var(--mono);font-weight:600;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,7vw,64px);line-height:1;margin:0;letter-spacing:.01em}
+h1 em{font-style:normal;color:var(--primary)}
+.sub{max-width:620px;margin:10px auto 0;color:var(--furniture);font-size:15px}
+.sub a{color:var(--accent);font-weight:600}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;align-items:start}
+@media (max-width:900px){.main{grid-template-columns:1fr}}
+/* steps panel */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;background:var(--light);border:3px solid var(--ink);border-radius:16px;padding:12px 16px;box-shadow:6px 8px 0 var(--accent)}
+.step{display:flex;gap:12px;align-items:center;min-width:0}
+.step .n{flex:none;width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;font:700 20px/34px var(--display);text-align:center}
+.step b{display:flex;align-items:center;gap:6px;font:700 18px/1.1 var(--display);letter-spacing:.02em;text-transform:uppercase}
+.step span.s{display:block;font-size:13px;color:var(--furniture)}
+@media (max-width:620px){.steps{gap:6px;padding:10px}.step{flex-direction:column;text-align:center;gap:6px}.step b{font-size:14px;justify-content:center}.step span.s{display:none}.step .n{width:28px;height:28px;font-size:16px;line-height:28px}}
+/* board */
+.board{background:transparent;display:flex;flex-direction:column;gap:12px}
+.now{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--light);border:3px solid var(--ink);border-radius:16px;padding:12px 16px}
+.now .num{font-family:var(--mono);font-size:13px;color:var(--g75)}
+.now h2{font:700 24px/1.1 var(--display);margin:0;letter-spacing:.01em}
+.now .icons{display:flex;gap:6px}
+.now .meta{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--g75);text-align:right;font-variant-numeric:tabular-nums}
+.now .meta b{color:var(--ink);font-weight:600}
+.stage{position:relative;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block;width:100%;height:auto}
+.status{min-height:46px;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:var(--light);font-weight:500;color:var(--ink);border:2px solid var(--p40)}
+.status .b{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 14px/1 var(--display);background:var(--edge);color:#fff}
+.status[data-tone="warn"] .b{background:var(--ink)}
+.status[data-tone="good"] .b{background:var(--primary)}
+.controls{display:flex;flex-wrap:wrap;gap:10px}
+.turn{flex:1 1 220px;font:700 18px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;background:var(--primary);color:#fff;border:0;
+  border-radius:14px;padding:18px 20px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;touch-action:none}
+.turn:active,.turn[data-on="1"]{background:var(--accent)}
+.btn{font:600 15px/1 var(--body);background:var(--light);border:3px solid var(--ink);color:var(--ink);border-radius:12px;padding:15px 16px;cursor:pointer}
+.btn:hover{border-color:var(--primary)}
+button:focus-visible{outline:3px solid var(--p40);outline-offset:2px}
+/* challenges card (light panel, like the wall) */
+.card{background:var(--light);color:var(--ink);border-radius:20px;overflow:hidden;box-shadow:8px 10px 0 var(--accent);border:3px solid var(--ink)}
+.card .hd{background:var(--primary);color:#fff;padding:18px 22px}
+.card .hd h3{font:700 36px/1 var(--display);margin:0;letter-spacing:.01em}
+.card .hd p{margin:6px 0 0;color:var(--p16);font-size:15px;line-height:1.35}
+.how{background:var(--p08);padding:14px 22px;font-size:14px;line-height:1.45}
+.how .lab{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--g75);margin:0 0 6px}
+.how p{margin:0 0 4px}
+.key{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px}
+.key span{display:flex;align-items:center;gap:6px}
+.dots{display:inline-flex;gap:4px;vertical-align:middle}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--primary);display:block}
+ol.list{list-style:none;margin:0;padding:6px 14px}
+ol.list li{display:grid;grid-template-columns:28px 64px 1fr auto;align-items:center;gap:8px;padding:9px 8px;border-top:1px solid var(--g12);border-radius:10px;cursor:pointer}
+ol.list li:first-child{border-top:0}
+ol.list li .n{font-family:var(--mono);font-size:13px;color:var(--g75)}
+ol.list li .nm{font-weight:700;font-size:16px}
+ol.list li .r{text-align:right;font-family:var(--mono);font-size:11px;color:var(--g75);line-height:1.6}
+ol.list li[aria-current="true"]{background:var(--p08);box-shadow:inset 4px 0 0 var(--primary)}
+ol.list li.done .nm::after{content:" \2713";color:var(--primary)}
+.rule{display:inline-flex;align-items:center;gap:6px;margin-left:8px;vertical-align:middle;background:var(--ink);color:var(--light);font:700 12px/1 var(--body);letter-spacing:0;text-transform:none;border-radius:99px;padding:3px 9px 3px 3px;white-space:nowrap}
+.rule b{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--light);color:var(--ink);font:700 12px/1 var(--display)}
+ol.list li .rule{margin:4px 0 0;display:flex;width:max-content}
+.run{margin:6px 14px 0;background:var(--p16);border-radius:12px;padding:12px 14px;font-size:14px}
+.run b{font-weight:700}
+.tips{margin:10px 14px 14px;background:var(--p08);border-radius:12px;padding:10px 14px;font-size:13px;display:grid;gap:8px}
+.tips div{display:flex;gap:10px;align-items:flex-start}
+.tips .i{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font:700 13px/1 var(--display)}
+.tips b{display:block;font-size:14px}
+/* win sheet */
+.win{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(42,46,55,.72);backdrop-filter:blur(2px)}
+.sheet{background:var(--light);color:var(--ink);border-radius:18px;max-width:420px;width:100%;padding:20px 22px;display:flex;flex-direction:column;gap:10px;box-shadow:8px 10px 0 rgba(21,24,29,.55)}
+.sheet .tag{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0}
+.sheet h3{font:700 32px/1 var(--display);margin:0}
+.sheet p{margin:0;color:var(--furniture);font-size:15px}
+.sheet .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.sheet .row .turn{flex:1 1 140px;padding:14px}
+.sheet .btn{background:var(--light);color:var(--ink);border-color:var(--g12)}
+@media (max-width:620px){body{padding-block:14px 24px}.wrap{gap:12px}.sub{font-size:13.5px}.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.controls .turn{grid-column:1/-1;padding:16px}.btn{padding:12px 10px}.now{padding:10px 12px}.now h2{font-size:20px}}
+/* real wall explainer */
+.real{background:var(--light);color:var(--ink);border:3px solid var(--ink);border-radius:20px;box-shadow:8px 10px 0 var(--accent);padding:20px 22px}
+.real h2{font:700 30px/1 var(--display);margin:0 0 4px}
+.real>p{margin:0 0 14px;color:var(--furniture)}
+.mech{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.mech{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:460px){.mech{grid-template-columns:1fr}}
+.mech div{background:var(--p08);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.mech svg{width:100%;height:auto;display:block;background:var(--light);border-radius:10px}
+.mech b{font:700 18px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+.mech span{font-size:14px;color:var(--furniture)}
+.arcta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;background:var(--ink);color:var(--light);border-radius:14px;padding:12px 16px}
+.arcta a{color:#fff;background:var(--primary);text-decoration:none;font:700 16px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:12px 16px;border-radius:10px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Blk S Level 5 · Gear wall</p>
+    <h1>CAN YOU MAKE IT <em>SPIN?</em></h1>
+    <p class="sub">This is a digital copy of a real gear wall at the Cargo Lift Entrance. Same board, same six challenges. <a href="#real">How the real wall works</a></p>
+  </header>
+
+  <div class="steps" aria-label="How to play">
+    <div class="step"><span class="n">1</span><div><b>Pick a gear</b><span class="s">any letter</span></div></div>
+    <div class="step"><span class="n">2</span><div><b>Push it in</b><span class="s">tap again to pull it out</span></div></div>
+    <div class="step"><span class="n">3</span><div><b>Turn the handle <svg width="20" height="20" viewBox="0 0 24 24" aria-label="clockwise"><path id="cwArc"/></svg></b><span class="s">then watch the outputs</span></div></div>
+  </div>
+
+  <div class="main">
+    <section class="board" aria-label="Gear board">
+      <div class="now">
+        <span class="num" id="nowNum">01</span>
+        <h2 id="nowName">Left, clockwise</h2>
+        <span class="icons" id="nowIcons"></span>
+        <span class="meta" id="nowMeta"></span>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="cv" width="960" height="640" aria-label="Gear board. Tap a lettered gear to push it in or pull it out. Drag the blue handle clockwise, or hold the turn button."></canvas>
+        <div class="win" id="win" hidden>
+          <div class="sheet" role="dialog" aria-labelledby="winTitle">
+            <p class="tag" id="winTag"></p>
+            <h3 id="winTitle">It spins!</h3>
+            <p id="winText"></p>
+            <div class="row">
+              <button class="btn" id="winAlt">Pull all out</button>
+              <button class="turn" id="winNext">Next challenge</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="status" id="status" role="status" aria-live="polite"><span class="b" id="statusB">i</span><span id="statusText"></span></div>
+      <div class="controls">
+        <button class="turn" id="turnBtn" aria-label="Hold to turn the handle clockwise">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path id="cwArc2"/></svg>
+          Hold to turn
+        </button>
+        <button class="btn" id="hintBtn">Stuck? Hint</button>
+        <button class="btn" id="resetBtn">Pull all out</button>
+      </div>
+    </section>
+
+    <aside class="card" aria-label="Challenges">
+      <div class="hd">
+        <h3>CHALLENGES</h3>
+        <p>Start at 01.<br>Work your way up.</p>
+      </div>
+      <div class="how">
+        <p class="lab">HOW TO PLAY</p>
+        <p><b>Pull every gear out. Then do 01 to 06 in a row.</b> No resetting in between.</p>
+        <p><span class="dots"><i></i><i></i><i></i></span> = fewest moves</p>
+        <p><b>1 move</b> = one gear in or out</p>
+        <div class="key" id="key"></div>
+      </div>
+      <ol class="list" id="list"></ol>
+      <div class="run" id="run"></div>
+      <div class="tips">
+        <div><span class="i">!</span><span><b>Handle stuck?</b>Two gears are pushing against each other. Pull one out.</span></div>
+        <div><span class="i">&#10003;</span><span><b>Done?</b>Pull every gear out for the next person.</span></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="real" id="real" aria-label="How the real wall works">
+    <h2>IT’S A REAL WALL</h2>
+    <p>Everything here is a physical part on the wall. Nothing needs power and no piece comes off.</p>
+    <div class="mech">
+      <div><svg viewBox="0 0 200 120" aria-hidden="true"><rect x="12" y="10" width="14" height="100" fill="#3E4451"/><line x1="26" y1="60" x2="150" y2="60" stroke="#B7BAC0" stroke-width="6"/><rect x="70" y="28" width="22" height="64" rx="3" fill="#DEE5FB" stroke="#15181D" stroke-width="3"/><rect x="70" y="92" width="22" height="22" rx="3" fill="#DEE5FB" stroke="#15181D" stroke-width="3" opacity=".0"/><rect x="70" y="96" width="22" height="14" rx="2" fill="#F8F9FB" stroke="#1E55FF" stroke-width="3"/><circle cx="160" cy="60" r="10" fill="#15181D"/><path d="M140 60 H112 M120 52 L112 60 L120 68" fill="none" stroke="#1E55FF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><b>Push in</b><span>Each gear slides on a fixed shaft. Push its knob and the gear lines up with its neighbours, so it turns with them.</span></div>
+      <div><svg viewBox="0 0 200 120" aria-hidden="true"><rect x="12" y="10" width="14" height="100" fill="#3E4451"/><line x1="26" y1="60" x2="150" y2="60" stroke="#B7BAC0" stroke-width="6"/><rect x="112" y="28" width="22" height="64" rx="3" fill="#B7BAC0" stroke="#15181D" stroke-width="3"/><rect x="70" y="96" width="22" height="14" rx="2" fill="#F8F9FB" stroke="#1E55FF" stroke-width="3"/><circle cx="160" cy="60" r="10" fill="#15181D"/><path d="M92 18 H126 M118 10 L126 18 L118 26" fill="none" stroke="#1E55FF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><b>Pull out</b><span>Pull the knob and the gear slides forward, out of line. It spins on its own and passes nothing on.</span></div>
+      <div><svg viewBox="0 0 200 120" aria-hidden="true"><circle cx="100" cy="62" r="40" fill="#1E55FF"/><circle cx="100" cy="62" r="9" fill="#F8F9FB"/><line x1="100" y1="62" x2="124" y2="42" stroke="#15181D" stroke-width="9" stroke-linecap="round"/><circle cx="124" cy="42" r="9" fill="#15181D"/><path d="M52 30 A58 58 0 0 1 150 26" fill="none" stroke="#15181D" stroke-width="5" stroke-linecap="round"/><path d="M144 14 L156 28 L139 32 Z" fill="#15181D"/></svg><b>Turn the handle</b><span>A ratchet lets it turn clockwise only, so you can’t cheat a challenge by cranking backwards.</span></div>
+      <div><svg viewBox="0 0 200 120" aria-hidden="true"><circle cx="100" cy="60" r="44" fill="#fff" stroke="#1E55FF" stroke-width="4"/><line x1="100" y1="60" x2="100" y2="24" stroke="#1E55FF" stroke-width="8" stroke-linecap="round"/><circle cx="100" cy="24" r="6" fill="#1E55FF"/><circle cx="100" cy="60" r="8" fill="#1E55FF"/><path d="M152 46 A56 56 0 0 1 150 82" fill="none" stroke="#15181D" stroke-width="4" stroke-dasharray="6 6"/></svg><b>Watch the outputs</b><span>The two output gears have a blue stripe, so you can see which way they spin.</span></div>
+    </div>
+    <div class="arcta"><span>Stuck on the real wall? Scan the AR card next to it for hints and answers.</span><a href="../">See it in AR</a></div>
+  </section>
+</div>
+
+<script>
+/* ---------- data: same board + challenges as the wall (challenges_v4) ---------- */
+const BOARD = [{"id":"H","kind":"handle","T":16,"x":115.965,"y":45.877},{"id":"G","kind":"slide","T":12,"x":179.887,"y":74.408},{"id":"J","kind":"slide","T":9,"x":226.119,"y":99.283},{"id":"D","kind":"slide","T":9,"x":154.799,"y":120.526},{"id":"E","kind":"slide","T":9,"x":170.248,"y":162.791},{"id":"F","kind":"slide","T":8,"x":172.216,"y":25.0},{"id":"C","kind":"slide","T":8,"x":90.338,"y":100.129},{"id":"B","kind":"slide","T":8,"x":61.933,"y":71.965},{"id":"A","kind":"slide","T":14,"x":40.0,"y":122.403},{"id":"OR","kind":"output","T":10,"x":214.418,"y":145.32},{"id":"OL","kind":"output","T":10,"x":95.658,"y":144.813}];
+const LABEL = {J:'H'};   // internal J is lettered H on the wall (H is the handle's internal id)
+const LEVELS = [
+  {name:'Left, clockwise',      need:{OL:'cw',  OR:'skip'}, target:1, goal:'Make the left output spin clockwise.'},
+  {name:'Right, anticlockwise', need:{OL:'skip',OR:'ccw'},  target:2, goal:'Make the right output spin anticlockwise.'},
+  {name:'Left, anticlockwise',  need:{OL:'ccw', OR:'skip'}, target:3, goal:'Now flip the left output: anticlockwise.'},
+  {name:'Right, clockwise',     need:{OL:'skip',OR:'cw'},   target:3, goal:'Now flip the right output: clockwise.'},
+  {name:'Left, clockwise',      need:{OL:'cw',  OR:'skip'}, target:5, spin:'F', goal:'Left output clockwise again, but this time gear F has to spin too.'},
+  {name:'Both anticlockwise',   need:{OL:'ccw', OR:'ccw'},  target:7, goal:'Both outputs anticlockwise at the same time. The final one.'}
+];
+const PERFECT = 21;
+const LESSONS = [
+  'Gears only pass motion on when their teeth touch.',
+  'Every gear in the chain flips the direction. Count them to predict the spin.',
+  'To flip an output, the chain needs one gear more or one gear less.',
+  'Pulling gears out matters as much as pushing them in.',
+  'The gear you never used was the answer. Sometimes the long way round is the only way.',
+  'Both outputs, a whole new route, no jams. That was the hardest one on the wall.'
+];
+const C = {primary:'#1E55FF', accent:'#1D47B8', ink:'#15181D', light:'#F8F9FB', furniture:'#3E4451', wall:'#2A2E37',
+  p12:'#DEE5FB', p40:'#A1B7FD', g35:'#B7BAC0', g45:'#A2A4AA', edge:'#545A65', track:'#4A505B', grid:'#31353E'};
+const M = 5, TOL = 1.0;
+const R = T => T * M / 2;
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+
+/* clockwise / anticlockwise icon: open circle, gap at the top, arrowhead across the gap (same as the wall) */
+function arcPath(cx,cy,r,cw){
+  const p=a=>[cx+r*Math.cos(a*Math.PI/180), cy+r*Math.sin(a*Math.PI/180)];
+  const [a0,a1,sw] = cw ? [300,600,1] : [240,-60,0];
+  const [x0,y0]=p(a0),[x1,y1]=p(a1), t=a1*Math.PI/180;
+  const [tx,ty] = cw ? [-Math.sin(t),Math.cos(t)] : [Math.sin(t),-Math.cos(t)];
+  const nx=Math.cos(t), ny=Math.sin(t), L=r*0.95, w=r*0.55;
+  return {arc:`M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 1 ${sw} ${x1.toFixed(1)},${y1.toFixed(1)}`,
+          head:`M${(x1+tx*L).toFixed(1)},${(y1+ty*L).toFixed(1)} L${(x1+nx*w).toFixed(1)},${(y1+ny*w).toFixed(1)} L${(x1-nx*w).toFixed(1)},${(y1-ny*w).toFixed(1)} Z`};
+}
+function iconSVG(need,size=30,lab){
+  const r=size/2-1, c=size/2; let inner='';
+  if (need==='skip') inner=`<circle cx="${c}" cy="${c}" r="${r-1}" fill="none" stroke="#B7BAC0" stroke-width="1.6" stroke-dasharray="3 3"/>`;
+  else { const a=arcPath(c,c+1,r*0.46,need==='cw');
+    inner=`<circle cx="${c}" cy="${c}" r="${r}" fill="#1E55FF"/><path d="${a.arc}" fill="none" stroke="#fff" stroke-width="${size/10}" stroke-linecap="round"/><path d="${a.head}" fill="#fff"/>`; }
+  const t = lab ? `<text x="${c}" y="${size+11}" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" font-weight="600" fill="${need==='skip'?'#B7BAC0':'#15181D'}">${lab}</text>` : '';
+  return `<svg width="${size}" height="${size+(lab?13:0)}" viewBox="0 0 ${size} ${size+(lab?13:0)}" aria-hidden="true">${inner}${t}</svg>`;
+}
+(function(){ for (const [id,col] of [['cwArc','#F8F9FB'],['cwArc2','#FFFFFF']]){ const el=document.getElementById(id); const a=arcPath(12,13,7,true);
+  el.outerHTML=`<path d="${a.arc}" fill="none" stroke="${col}" stroke-width="2.6" stroke-linecap="round"/><path d="${a.head}" fill="${col}"/>`; } })();
+document.getElementById('key').innerHTML = [['cw','clockwise'],['ccw','anticlockwise'],['skip','doesn’t matter']].map(([n,l])=>`<span>${iconSVG(n,18)}${l}</span>`).join('');
+
+/* ---------- state ---------- */
+let lv=0, S=null, RUN={moves:0, clean:true, done:new Set(), used:{}};
+let view={s:1,ox:0,oy:0};
+const DONE_KEY='gearwall-v4-best';
+let bestRun=null; try{ bestRun=JSON.parse(localStorage.getItem(DONE_KEY)||'null'); }catch(e){ bestRun=null; }
+
+function freshGears(){ return BOARD.map(g=>({...g, r:R(g.T), t:g.kind==='slide'?0:1, target:g.kind==='slide'?0:1, ang:Math.random()*0.3, prog:0, shake:0, wrong:0})); }
+function loadLevel(i, opts={}){
+  lv=i; const L=LEVELS[i]; const gears = (!S || opts.reset) ? freshGears() : S.gears;
+  for (const g of gears){ g.prog=0; g.wrong=0; g.shake=0; if (g.kind==='output') g.need=L.need[g.id]; }
+  if (opts.reset){ RUN={moves:0, clean:true, done:new Set(), used:{}}; }
+  if (opts.jump) RUN.clean=false;   // jumping around is practice, not a perfect run
+  S={L, gears, slides:0, solved:false, hint:null, coach:null, coachId:null, wrongT:0, par:0};
+  S.par=parFromHere();
+  if (i===0 && RUN.moves===0){ const h=nextHint(); if (h){ S.coach='gear'; S.coachId=h.id; } }
+  document.getElementById('win').hidden=true;
+  fitView(); renderNow(); renderList(); renderRun();
+  setStatus(defaultMsg(),'info');
+}
+function parFromHere(){
+  const sl=S.gears.filter(g=>g.kind==='slide'); let best=null;
+  for (let m=0;m<(1<<sl.length);m++){ const st=new Map(sl.map((g,k)=>[g.id,(m>>k)&1])); if(!goalMetFor(st)) continue;
+    const d=sl.filter(g=>st.get(g.id)!==g.target).length; if(best===null||d<best) best=d; }
+  return best??0;
+}
+const byId=id=>S.gears.find(g=>g.id===id);
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+
+/* ---------- plate (same shape idea as the wall: a hull around the gears) ---------- */
+let PLATE=[], BOLTS=[];
+function buildPlate(){
+  const pts=[]; for (const g of BOARD){ const Rr=R(g.T)+M+9; for(let k=0;k<40;k++){ const a=2*Math.PI*k/40; pts.push([g.x+Rr*Math.cos(a), g.y+Rr*Math.sin(a)]); } }
+  pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]); const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[],up=[]; for(const p of pts){ while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0) lo.pop(); lo.push(p); }
+  for(const p of pts.slice().reverse()){ while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0) up.pop(); up.push(p); }
+  PLATE=lo.slice(0,-1).concat(up.slice(0,-1));
+  let per=0; const seg=[]; for(let i=0;i<PLATE.length;i++){ const a=PLATE[i],b=PLATE[(i+1)%PLATE.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]); seg.push([a,b,L]); per+=L; }
+  const n=Math.round(per/70), step=per/n; let t=step/2, acc=0; const cx=PLATE.reduce((s,p)=>s+p[0],0)/PLATE.length, cy=PLATE.reduce((s,p)=>s+p[1],0)/PLATE.length;
+  for(const [a,b,L] of seg){ while(t<=acc+L){ const f=(t-acc)/L; let x=a[0]+(b[0]-a[0])*f, y=a[1]+(b[1]-a[1])*f; const vx=cx-x,vy=cy-y,vl=Math.hypot(vx,vy); BOLTS.push([x+vx/vl*3.5,y+vy/vl*3.5]); t+=step; } acc+=L; }
+}
+buildPlate();
+
+function fitView(){
+  const pad=18; let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for (const [x,y] of PLATE){ x0=Math.min(x0,x); y0=Math.min(y0,y); x1=Math.max(x1,x); y1=Math.max(y1,y); }
+  x0-=4;y0-=4;x1+=8;y1+=8;
+  const w=cv.width,h=cv.height; const s=Math.min((w-2*pad)/(x1-x0),(h-2*pad)/(y1-y0));
+  view={s, ox:(w-(x1-x0)*s)/2-x0*s, oy:(h-(y1-y0)*s)/2-y0*s};
+}
+function resize(){
+  const box=cv.parentElement.getBoundingClientRect(); const dpr=Math.min(window.devicePixelRatio||1,2);
+  const cssW=box.width, cssH=Math.round(cssW*(cssW<600?0.8:0.66));
+  cv.style.height=cssH+'px'; cv.width=Math.round(cssW*dpr); cv.height=Math.round(cssH*dpr);
+  if (S) fitView();
+}
+
+/* ---------- mechanics (unchanged maths) ---------- */
+function meshGraph(useTargets){
+  const act=S.gears.filter(g=>g.kind!=='slide'||(useTargets?g.target===1:g.t>=1)); const adj=new Map(act.map(g=>[g.id,[]]));
+  for(let i=0;i<act.length;i++) for(let j=i+1;j<act.length;j++){ const a=act[i],b=act[j]; if(Math.abs(Math.hypot(a.x-b.x,a.y-b.y)-(a.r+b.r))<TOL){ adj.get(a.id).push(b); adj.get(b.id).push(a);} }
+  return adj;
+}
+function propagate(adj){
+  const ratio=new Map([['H',1]]),parent=new Map(); const q=['H']; let jam=false;
+  while(q.length){ const u=q.shift(),gu=byId(u); for(const v of adj.get(u)){ const r=-ratio.get(u)*gu.T/v.T;
+    if(!ratio.has(v.id)){ ratio.set(v.id,r); parent.set(v.id,u); q.push(v.id);} else if(Math.abs(ratio.get(v.id)-r)>1e-6) jam=true; } }
+  return {ratio,parent,jam};
+}
+function goalMetFor(st){
+  const act=S.gears.filter(g=>g.kind!=='slide'||st.get(g.id)===1); const adj=new Map(act.map(g=>[g.id,[]]));
+  for(let i=0;i<act.length;i++) for(let j=i+1;j<act.length;j++){ const a=act[i],b=act[j]; if(Math.abs(Math.hypot(a.x-b.x,a.y-b.y)-(a.r+b.r))<TOL){ adj.get(a.id).push(b); adj.get(b.id).push(a);} }
+  const ratio=new Map([['H',1]]); const q=['H'];
+  while(q.length){ const u=q.shift(),gu=byId(u); for(const v of adj.get(u)){ const r=-ratio.get(u)*gu.T/v.T; if(!ratio.has(v.id)){ratio.set(v.id,r);q.push(v.id);} else if(Math.abs(ratio.get(v.id)-r)>1e-6) return false; } }
+  for (const g of S.gears) if (g.kind==='output' && g.need!=='skip'){ if(!ratio.has(g.id)) return false;
+    if(g.need==='cw'&&ratio.get(g.id)<0) return false; if(g.need==='ccw'&&ratio.get(g.id)>0) return false; }
+  if(S.L.spin && !ratio.has(S.L.spin)) return false;
+  return true;
+}
+function nextHint(){
+  const sl=S.gears.filter(g=>g.kind==='slide'); let best=null,bestD=1e9;
+  for(let m=0;m<(1<<sl.length);m++){ const st=new Map(sl.map((g,k)=>[g.id,(m>>k)&1])); if(!goalMetFor(st)) continue;
+    const diff=sl.filter(g=>st.get(g.id)!==g.target); if(diff.length<bestD){bestD=diff.length;best=diff;} }
+  if(!best||!best.length) return null; best.sort((a,b)=>b.target-a.target); return best[0];
+}
+
+/* ---------- input ---------- */
+let drag=null, holdTurn=false, pendingTurn=0;
+function toLogical(e){ const rc=cv.getBoundingClientRect(), k=cv.width/rc.width; return {x:((e.clientX-rc.left)*k-view.ox)/view.s, y:((e.clientY-rc.top)*k-view.oy)/view.s}; }
+cv.addEventListener('pointerdown',e=>{
+  if(S.solved) return; audioInit(); const p=toLogical(e), H=byId('H');
+  for(const g of S.gears) if(g.kind==='slide' && Math.hypot(p.x-g.x,p.y-g.y)<g.r+M+3){ toggle(g); return; }
+  if(Math.hypot(p.x-H.x,p.y-H.y)<H.r+M+30){ drag={last:Math.atan2(p.y-H.y,p.x-H.x)}; cv.setPointerCapture(e.pointerId); if(S.coach==='handle') S.coach=null; }
+});
+cv.addEventListener('pointermove',e=>{
+  const p=toLogical(e);
+  if(drag){ const H=byId('H'); const a=Math.atan2(p.y-H.y,p.x-H.x); let d=a-drag.last; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
+    if(d>0) pendingTurn+=Math.min(d,0.6); else if(d<-0.05) ratchetNote(); drag.last=a; return; }
+  let over=false; const H=byId('H');
+  for(const g of S.gears) if(g.kind==='slide' && Math.hypot(p.x-g.x,p.y-g.y)<g.r+M+3) over=true;
+  if(Math.hypot(p.x-H.x,p.y-H.y)<H.r+M+30) over=true; cv.style.cursor=over?'pointer':'default';
+});
+const endDrag=()=>{drag=null;}; cv.addEventListener('pointerup',endDrag); cv.addEventListener('pointercancel',endDrag);
+const tb=document.getElementById('turnBtn');
+const startHold=e=>{ e.preventDefault(); if(S.solved) return; audioInit(); holdTurn=true; tb.dataset.on='1'; if(S.coach==='handle') S.coach=null; };
+const stopHold=()=>{ holdTurn=false; tb.dataset.on='0'; };
+tb.addEventListener('pointerdown',startHold); ['pointerup','pointerleave','pointercancel'].forEach(ev=>tb.addEventListener(ev,stopHold));
+tb.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter') startHold(e); }); tb.addEventListener('keyup',e=>{ if(e.key===' '||e.key==='Enter') stopHold(); });
+tb.addEventListener('contextmenu',e=>e.preventDefault());
+window.addEventListener('keydown',e=>{ if(e.key===' '&&document.activeElement===document.body){ e.preventDefault(); startHold(e);} });
+window.addEventListener('keyup',e=>{ if(e.key===' ') stopHold(); });
+
+document.getElementById('resetBtn').onclick=()=>loadLevel(0,{reset:true});
+document.getElementById('hintBtn').onclick=()=>{
+  if(S.solved) return; const g=nextHint();
+  if(!g){ setStatus('Your gears are set. Turn the handle!','good'); S.coach='handle'; return; }
+  S.hint={id:g.id}; setStatus(g.target?`Try pulling ${LABEL[g.id]||g.id} out.`:`Try pushing ${LABEL[g.id]||g.id} in.`,'info');
+};
+document.getElementById('winNext').onclick=()=>{ if(lv===LEVELS.length-1) loadLevel(0,{reset:true}); else loadLevel(lv+1); };
+document.getElementById('winAlt').onclick=()=>loadLevel(0,{reset:true});
+
+function toggle(g){
+  g.target=g.target?0:1; S.slides++; RUN.moves++; S.hint=null; blip(g.target?520:380,.05);
+  if(S.coach==='gear') S.coach='handle';
+  renderNow(); renderRun(); setStatus(defaultMsg(),'info');
+}
+let ratchetT=0;
+function ratchetNote(){ const now=performance.now(); if(now-ratchetT>1500){ ratchetT=now; setStatus('The handle only turns clockwise.','info'); } }
+
+/* ---------- UI ---------- */
+const ruleChip=L=>L.spin?`<span class="rule"><b>${LABEL[L.spin]||L.spin}</b>must spin too</span>`:'';
+function renderNow(){
+  const L=LEVELS[lv];
+  document.getElementById('nowNum').textContent=String(lv+1).padStart(2,'0');
+  document.getElementById('nowName').innerHTML=L.name+ruleChip(L);
+  document.getElementById('nowIcons').innerHTML=iconSVG(L.need.OL,30,'L')+iconSVG(L.need.OR,30,'R');
+  document.getElementById('nowMeta').innerHTML=`Moves <b>${S.slides}</b> / ${'<span class="dots">'+'<i></i>'.repeat(L.target)+'</span>'}`;
+}
+function renderList(){
+  const ol=document.getElementById('list'); ol.innerHTML='';
+  LEVELS.forEach((L,i)=>{ const li=document.createElement('li'); if(i===lv) li.setAttribute('aria-current','true'); if(RUN.done.has(i)) li.classList.add('done');
+    li.tabIndex=0; li.setAttribute('role','button'); li.setAttribute('aria-label',`Challenge ${i+1}: ${L.name}, ${L.target} moves`);
+    const used = RUN.used[i]!=null ? `${RUN.used[i]} used` : `${L.target} move${L.target>1?'s':''}`;
+    li.innerHTML=`<span class="n">${String(i+1).padStart(2,'0')}</span><span>${iconSVG(L.need.OL,26,'L')} ${iconSVG(L.need.OR,26,'R')}</span><span class="nm">${L.name}${ruleChip(L)}</span><span class="r"><span class="dots">${'<i></i>'.repeat(L.target)}</span><br>${used}</span>`;
+    li.onclick=()=>{ if(i!==lv) loadLevel(i,{jump:true}); };
+    li.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); li.onclick(); } };
+    ol.appendChild(li); });
+}
+function renderRun(){
+  const best = bestRun!=null ? ` Your best: ${bestRun}.` : '';
+  document.getElementById('run').innerHTML = `Match every dot for a <b>perfect run: ${PERFECT} moves.</b><br>This run: <b>${RUN.moves}</b> move${RUN.moves===1?'':'s'}${RUN.clean?'':' (practice)'}.${best}`;
+}
+let lastMsg='';
+function setStatus(t,tone){ if(t===lastMsg && document.getElementById('status').dataset.tone===tone) return; lastMsg=t;
+  document.getElementById('statusText').textContent=t; document.getElementById('status').dataset.tone=tone;
+  document.getElementById('statusB').textContent = tone==='warn' ? '!' : tone==='good' ? '✓' : 'i'; }
+function defaultMsg(){
+  if(S.coach==='gear') return `Start here: tap ${LABEL[S.coachId]||S.coachId} to push it in.`;
+  if(S.coach==='handle') return 'Now turn the handle clockwise: drag it, or hold the button.';
+  if(S.par>S.L.target && S.slides===0) return `${S.L.goal} You’re off the perfect run, so the fewest from here is ${S.par}.`;
+  return S.L.goal;
+}
+
+/* ---------- audio ---------- */
+let AC=null;
+function audioInit(){ if(AC) return; try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ AC=null; } }
+function blip(f,d,type='triangle',vol=.06){ if(!AC) return; try{ const o=AC.createOscillator(),g=AC.createGain(); o.type=type; o.frequency.value=f;
+  g.gain.setValueAtTime(vol,AC.currentTime); g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d); o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime+d);}catch(e){} }
+
+/* ---------- loop ---------- */
+let lastT=performance.now(), tickAcc=0;
+function step(now){
+  const dt=Math.min(.05,(now-lastT)/1000); lastT=now;
+  if(!S){ requestAnimationFrame(step); return; }
+  for(const g of S.gears) if(g.kind==='slide'){ const sp=dt/0.25; g.t=g.target?Math.min(1,g.t+sp):Math.max(0,g.t-sp); }
+  const {ratio,parent,jam}=propagate(meshGraph(false));
+  let dTheta=pendingTurn; pendingTurn=0; if(holdTurn) dTheta+=2.4*dt; if(S.solved) dTheta=1.6*dt;
+  const turning=dTheta>0, H=byId('H');
+  if(turning && jam && !S.solved){ for(const g of S.gears) if(ratio.has(g.id)) g.shake=1; dTheta=0; if(Math.random()<.2) blip(90,.08,'square',.04); }
+  if(dTheta>0){
+    H.ang+=dTheta; tickAcc+=dTheta; if(tickAcc>0.35){ tickAcc=0; blip(1400,.015,'square',.015); }
+    for(const id of ratio.keys()){ if(id==='H') continue; const g=byId(id), p=byId(parent.get(id)); const before=g.ang, phi=Math.atan2(g.y-p.y,g.x-p.x);
+      g.ang=phi+Math.PI+Math.PI/g.T-(p.ang-phi)*p.T/g.T; let d=g.ang-before; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
+      if(g.kind==='output' && !S.solved && g.need!=='skip'){ const want=g.need==='cw'?1:-1;
+        if(Math.sign(d)===want) g.prog=Math.min(1,g.prog+Math.abs(d)/(2*Math.PI)); else { g.prog=Math.max(0,g.prog-Math.abs(d)/(4*Math.PI)); S.wrongT=now; g.wrong=now; } } }
+  }
+  for(const g of S.gears) g.shake=Math.max(0,g.shake-dt*3);
+  if(turning && !S.solved){
+    const outs=S.gears.filter(g=>g.kind==='output'&&g.need!=='skip'), conn=outs.filter(g=>ratio.has(g.id));
+    if(jam) setStatus('Jammed. Two gears are pushing against each other. Pull one out.','warn');
+    else if(!conn.length) setStatus('The handle turns, but nothing reaches that output yet.','info');
+    else if(now-S.wrongT<300) setStatus('It spins, but the wrong way. Every gear flips the direction.','warn');
+    else if(conn.length<outs.length) setStatus('One output is going. Now the other one.','info');
+    else if(S.L.spin && !ratio.has(S.L.spin)) setStatus(`Nice, but ${LABEL[S.L.spin]||S.L.spin} isn’t spinning. It has to be part of the chain.`,'warn');
+    else setStatus('Keep turning…','good');
+  }
+  if(!S.solved){ const outs=S.gears.filter(g=>g.kind==='output'&&g.need!=='skip'); if(outs.every(g=>g.prog>=1)&&!jam&&(!S.L.spin||ratio.has(S.L.spin))){ S.solved=true; S.coach=null; win(); } }
+  draw(now,ratio,jam); requestAnimationFrame(step);
+}
+
+function win(){
+  const L=S.L, n=S.slides, hit=n<=L.target; RUN.done.add(lv); RUN.used[lv]=n; renderList();
+  setStatus(hit?'Matched the dots.':'Done. Can you match the dots next time?','good');
+  [523,659,784].forEach((f,i)=>setTimeout(()=>blip(f,.18,'triangle',.07),i*110));
+  const last=lv===LEVELS.length-1, token=S;
+  if(last && RUN.clean && RUN.done.size===LEVELS.length){ if(bestRun==null||RUN.moves<bestRun){ bestRun=RUN.moves; try{localStorage.setItem(DONE_KEY,JSON.stringify(bestRun));}catch(e){} } }
+  setTimeout(()=>{ if(S!==token) return;
+    document.getElementById('winTag').textContent=`Challenge ${String(lv+1).padStart(2,'0')} done · ${n} move${n===1?'':'s'} · dots ${L.target}`;
+    if(last){
+      const perfect = RUN.clean && RUN.moves<=PERFECT && RUN.done.size===LEVELS.length;
+      document.getElementById('winTitle').textContent = perfect ? 'Perfect run!' : 'You beat the wall!';
+      document.getElementById('winText').textContent = RUN.clean ? `Whole run: ${RUN.moves} moves. A perfect run is ${PERFECT}. ${LESSONS[lv]}` : `${LESSONS[lv]} Pull all out and try a full run from 01.`;
+      document.getElementById('winNext').textContent='Play again from 01'; document.getElementById('winAlt').hidden=true;
+    } else {
+      document.getElementById('winTitle').textContent = hit ? 'Matched the dots!' : 'It spins!';
+      document.getElementById('winText').textContent = LESSONS[lv] + ' Keep your gears where they are for the next one.';
+      document.getElementById('winNext').textContent='Next challenge'; document.getElementById('winAlt').hidden=false;
+    }
+    document.getElementById('win').hidden=false; document.getElementById('winNext').focus();
+  },850);
+}
+
+/* ---------- drawing (matches the wall artwork) ---------- */
+function gearPath(x,y,r,T,ang){ const ro=r+M, rr=r-1.25*M, p=2*Math.PI/T; ctx.beginPath();
+  for(let k=0;k<T;k++){ const a=ang+k*p; [[rr,a-.5*p],[rr,a-.27*p],[ro,a-.14*p],[ro,a+.14*p],[rr,a+.27*p]].forEach(([rad,aa],i)=>{ const X=x+rad*Math.cos(aa),Y=y+rad*Math.sin(aa); (k===0&&i===0)?ctx.moveTo(X,Y):ctx.lineTo(X,Y); }); }
+  ctx.closePath(); }
+function plateLabel(t,x,y,bg,fg,size){ ctx.font=`600 ${size}px "Source Code Pro", monospace`; const w=ctx.measureText(t).width+size*1.2, h=size*1.75;
+  ctx.fillStyle=bg; roundRect(x-w/2,y-h/2,w,h,h/2); ctx.fill(); ctx.fillStyle=fg; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(t,x,y+0.3); }
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function pulse(x,y,r,now,col){ const k=(now%1200)/1200; ctx.save(); ctx.globalAlpha=1-k; ctx.strokeStyle=col; ctx.lineWidth=2.2; ctx.beginPath(); ctx.arc(x,y,r+k*10,0,Math.PI*2); ctx.stroke(); ctx.restore(); }
+function draw(now,ratio,jam){
+  const w=cv.width,h=cv.height; ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,w,h);
+  ctx.setTransform(view.s,0,0,view.s,view.ox,view.oy);
+  // plate + shadow + bolts
+  const plate=()=>{ ctx.beginPath(); PLATE.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y)); ctx.closePath(); };
+  ctx.save(); ctx.translate(2.2,2.8); plate(); ctx.fillStyle='rgba(21,24,29,.55)'; ctx.fill(); ctx.restore();
+  plate(); ctx.fillStyle=C.furniture; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle=C.edge; ctx.stroke();
+  for(const [x,y] of BOLTS){ ctx.beginPath(); ctx.arc(x,y,2.2,0,Math.PI*2); ctx.fillStyle=C.edge; ctx.fill(); ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fillStyle=C.furniture; ctx.fill(); }
+  // progress rings round the outputs
+  for(const g of S.gears) if(g.kind==='output' && g.need!=='skip'){ const rr=g.r+M+4.5;
+    ctx.lineWidth=3.2; ctx.strokeStyle=C.track; ctx.beginPath(); ctx.arc(g.x,g.y,rr,0,Math.PI*2); ctx.stroke();
+    if(g.prog>0){ ctx.strokeStyle=(g.wrong&&now-g.wrong<400)?C.g35:C.primary; ctx.lineCap='round'; ctx.beginPath(); ctx.arc(g.x,g.y,rr,-Math.PI/2,-Math.PI/2+g.prog*2*Math.PI); ctx.stroke(); ctx.lineCap='butt'; } }
+  // pulled-out gears first (they sit proud), then pushed-in, then fixed ones
+  const rank=g=>g.kind==='slide'?(g.t<1?0:1):2;
+  const order=[...S.gears].sort((a,b)=>rank(a)-rank(b));
+  const pulses=[];
+  for(const g of order){
+    const sh=g.shake?Math.sin(now/22)*1.4*g.shake:0, x=g.x+sh, y=g.y;
+    if(g.kind==='slide'){
+      const k=1-ease(g.t);                 // 1 = fully out
+      ctx.save(); gearPath(x+1.6+1.6*k,y+2+2*k,g.r,g.T,g.ang); ctx.fillStyle=`rgba(21,24,29,${.5-.15*k})`; ctx.fill(); ctx.restore();
+      ctx.save(); ctx.globalAlpha=1-0.45*k;
+      gearPath(x,y,g.r,g.T,g.ang); ctx.fillStyle=k>0.5?C.g35:C.p12; ctx.fill(); ctx.lineWidth=1.2; ctx.strokeStyle=C.ink; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y,g.r*0.62,0,Math.PI*2); ctx.strokeStyle='#AEB4C4'; ctx.lineWidth=1; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y,8,0,Math.PI*2); ctx.strokeStyle=C.g45; ctx.lineWidth=1.1; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y,6.3,0,Math.PI*2); ctx.fillStyle=C.ink; ctx.fill();
+      ctx.fillStyle=C.light; ctx.font='700 7.6px Barlow, Arial, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(LABEL[g.id]||g.id,x,y+0.4);
+      ctx.restore();
+      if((S.hint&&S.hint.id===g.id)||(S.coach==='gear'&&S.coachId===g.id)) pulses.push([x,y,g.r+M+3]);
+    } else if(g.kind==='handle'){
+      gearPath(x+2,y+2.6,g.r,g.T,g.ang); ctx.fillStyle='rgba(21,24,29,.55)'; ctx.fill();
+      gearPath(x,y,g.r,g.T,g.ang); ctx.fillStyle=C.primary; ctx.fill(); ctx.lineWidth=1.4; ctx.strokeStyle=C.accent; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y,g.r*0.62,0,Math.PI*2); ctx.strokeStyle=C.accent; ctx.lineWidth=1; ctx.stroke();
+      const kx=x+Math.cos(g.ang)*g.r*0.55, ky=y+Math.sin(g.ang)*g.r*0.55;
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(kx,ky); ctx.strokeStyle=C.ink; ctx.lineWidth=7; ctx.lineCap='round'; ctx.stroke(); ctx.lineCap='butt';
+      ctx.beginPath(); ctx.arc(kx,ky,7.6,0,Math.PI*2); ctx.fillStyle=C.ink; ctx.fill();
+      ctx.beginPath(); ctx.arc(x,y,6.3,0,Math.PI*2); ctx.fillStyle=C.light; ctx.fill(); ctx.lineWidth=1.4; ctx.strokeStyle=C.accent; ctx.stroke();
+      plateLabel('HANDLE',x,y+g.r*0.42,C.light,C.ink,4.4);
+      if(S.coach==='handle') pulses.push([x,y,g.r+M+6]);
+    } else {
+      gearPath(x+2,y+2.6,g.r,g.T,g.ang); ctx.fillStyle='rgba(21,24,29,.55)'; ctx.fill();
+      gearPath(x,y,g.r,g.T,g.ang); ctx.fillStyle='#FFFFFF'; ctx.fill(); ctx.lineWidth=1.8; ctx.strokeStyle=C.primary; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y,g.r*0.62,0,Math.PI*2); ctx.strokeStyle='#BCCBFB'; ctx.lineWidth=1; ctx.stroke();
+      // the blue stripe turns with the gear so you can read the direction
+      const a=g.ang-Math.PI/2; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+Math.cos(a)*g.r*0.78,y+Math.sin(a)*g.r*0.78);
+      ctx.strokeStyle=C.primary; ctx.lineWidth=4; ctx.lineCap='round'; ctx.stroke(); ctx.lineCap='butt';
+      ctx.beginPath(); ctx.arc(x+Math.cos(a)*g.r*0.78,y+Math.sin(a)*g.r*0.78,3.3,0,Math.PI*2); ctx.fillStyle=C.primary; ctx.fill();
+      ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fillStyle=C.primary; ctx.fill(); ctx.beginPath(); ctx.arc(x,y,1.7,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+      plateLabel(g.id==='OL'?'LEFT OUTPUT':'RIGHT OUTPUT',x,y+g.r*0.42,g.need==='skip'?C.edge:C.primary,'#FFFFFF',3.2);
+    }
+  }
+  for(const [x,y,r] of pulses) pulse(x,y,r,now,C.p40);
+  if(S.L.spin && !S.solved){ const g=byId(S.L.spin), on=ratio.has(g.id);
+    ctx.save(); ctx.lineWidth=2.2; ctx.strokeStyle=on?C.primary:C.light; if(!on){ ctx.setLineDash([4,3.5]); ctx.lineDashOffset=-now/60; }
+    ctx.beginPath(); ctx.arc(g.x,g.y,g.r+M+5,0,Math.PI*2); ctx.stroke(); ctx.restore(); }
+}
+
+window.addEventListener('resize',()=>resize());
+resize(); loadLevel(0,{reset:true}); requestAnimationFrame(step);
+</script>
+
+
+</body>
+</html>
